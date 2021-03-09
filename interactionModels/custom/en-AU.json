@@ -1,0 +1,373 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "which world",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "TodaysWorldIntent",
+          "slots": [
+            {
+              "name": "Activity",
+              "type": "ActivitySlot"
+            },
+            {
+              "name": "worldReference",
+              "type": "worldReferenceSlot"
+            },
+            {
+              "name": "availableReference",
+              "type": "availableReferenceSlot"
+            },
+            {
+              "name": "optionalToday",
+              "type": "optionalTodaySlot"
+            }
+          ],
+          "samples": [
+            "what are the current {worldReference}",
+            "what are today\u0027s {worldReference}",
+            "what {worldReference} are {availableReference} {optionalToday}",
+            "what {worldReference} are currently {availableReference}",
+            "what {worldReference} can i {Activity} in today",
+            "what {worldReference} is currently {availableReference}",
+            "what {worldReference} is {availableReference} {optionalToday}",
+            "where can I {Activity} {optionalToday}",
+            "what is {availableReference}",
+            "what is today\u0027s {worldReference}",
+            "what is the current {worldReference}"
+          ]
+        },
+        {
+          "name": "WhenWorldIntent",
+          "slots": [
+            {
+              "name": "GuestWorldName",
+              "type": "AMAZON.AT_CITY"
+            },
+            {
+              "name": "Activity",
+              "type": "ActivitySlot"
+            },
+            {
+              "name": "optionalWatopiaIntentTimeframe",
+              "type": "optionalWatopiaIntentTimeframeSlot"
+            }
+          ],
+          "samples": [
+            "can I {Activity} in {GuestWorldName} {optionalWatopiaIntentTimeframe}",
+            "can I {Activity} {GuestWorldName} {optionalWatopiaIntentTimeframe}",
+            "when will {GuestWorldName} be active",
+            "when will {GuestWorldName} be available",
+            "when is {GuestWorldName} available",
+            "when can I {Activity} {GuestWorldName}",
+            "when can I {Activity} in {GuestWorldName}"
+          ]
+        },
+        {
+          "name": "ZwiftTimeIntent",
+          "slots": [],
+          "samples": [
+            "what day is it"
+          ]
+        },
+        {
+          "name": "NextWorldIntent",
+          "slots": [
+            {
+              "name": "worldReference",
+              "type": "worldReferenceSlot"
+            },
+            {
+              "name": "availableReference",
+              "type": "availableReferenceSlot"
+            }
+          ],
+          "samples": [
+            "what {worldReference} are next",
+            "what is the next {availableReference} {worldReference}",
+            "what {worldReference} is next",
+            "when does the {worldReference} change"
+          ]
+        },
+        {
+          "name": "TomorrowsWorldIntent",
+          "slots": [
+            {
+              "name": "Activity",
+              "type": "ActivitySlot"
+            },
+            {
+              "name": "worldReference",
+              "type": "worldReferenceSlot"
+            },
+            {
+              "name": "availableReference",
+              "type": "availableReferenceSlot"
+            }
+          ],
+          "samples": [
+            "what {worldReference} are {availableReference} tomorrow",
+            "what {worldReference} is {availableReference} tomorrow",
+            "what {worldReference} can i {Activity} in tomorrow",
+            "where can I {Activity} tomorrow"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "values": [
+            {
+              "name": {
+                "value": "France"
+              }
+            },
+            {
+              "name": {
+                "value": "Paris",
+                "synonyms": [
+                  "pairs, pears"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "Innsbruck",
+                "synonyms": [
+                  "book",
+                  "brook",
+                  "bruck",
+                  "sbrook",
+                  "spruck",
+                  "sprook",
+                  "sproch",
+                  "spruch",
+                  "spro",
+                  "inspro",
+                  "Austria"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "New York",
+                "synonyms": [
+                  "Central Park",
+                  "New York City"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "London"
+              }
+            },
+            {
+              "name": {
+                "value": "Yorkshire"
+              }
+            },
+            {
+              "name": {
+                "value": "Watopia",
+                "synonyms": [
+                  "utopia",
+                  "opia",
+                  "fly thopia",
+                  "what obia",
+                  "wutobia",
+                  "wotobia",
+                  "watobia",
+                  "what to be a",
+                  "what opia",
+                  "motopia",
+                  "what thopia",
+                  "wachovia",
+                  "water bea",
+                  "whutopa",
+                  "watt opia",
+                  "wa topia",
+                  "wha topia",
+                  "wootopia",
+                  "wotopia",
+                  "wutopia"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "Richmond",
+                "synonyms": [
+                  "Virginia"
+                ]
+              }
+            }
+          ],
+          "name": "AMAZON.AT_CITY"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "spin"
+              }
+            },
+            {
+              "name": {
+                "value": "train"
+              }
+            },
+            {
+              "name": {
+                "value": "workout"
+              }
+            },
+            {
+              "name": {
+                "value": "ride",
+                "synonyms": [
+                  "ride on",
+                  "mountain bike",
+                  "cycle",
+                  "bike"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "run"
+              }
+            }
+          ],
+          "name": "ActivitySlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "guest worlds"
+              }
+            },
+            {
+              "name": {
+                "value": "maps"
+              }
+            },
+            {
+              "name": {
+                "value": "worlds"
+              }
+            },
+            {
+              "name": {
+                "value": "map"
+              }
+            },
+            {
+              "name": {
+                "value": "region"
+              }
+            },
+            {
+              "name": {
+                "value": "area"
+              }
+            },
+            {
+              "name": {
+                "value": "guest world"
+              }
+            },
+            {
+              "name": {
+                "value": "world"
+              }
+            }
+          ],
+          "name": "worldReferenceSlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "up"
+              }
+            },
+            {
+              "name": {
+                "value": "active"
+              }
+            },
+            {
+              "name": {
+                "value": "available"
+              }
+            }
+          ],
+          "name": "availableReferenceSlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "todays"
+              }
+            },
+            {
+              "name": {
+                "value": "now"
+              }
+            },
+            {
+              "name": {
+                "value": "today"
+              }
+            }
+          ],
+          "name": "optionalTodaySlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "every day"
+              }
+            },
+            {
+              "name": {
+                "value": "next week"
+              }
+            },
+            {
+              "name": {
+                "value": "tomorrow"
+              }
+            },
+            {
+              "name": {
+                "value": "today"
+              }
+            }
+          ],
+          "name": "optionalWatopiaIntentTimeframeSlot"
+        }
+      ]
+    }
+  },
+  "version": "5"
+}

@@ -1,0 +1,139 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "summary": "Kick your indoor training planning up a notch. Quickly find out what guest worlds are active and when your favorites are up next.",
+          "examplePhrases": [
+            "Alexa, ask Which World, where can I ride today?",
+            "Alexa, ask Which World, what guest world is next?",
+            "Alexa, ask Which World, when can I run in London?"
+          ],
+          "keywords": [
+            "guest",
+            "world",
+            "calendar",
+            "course",
+            "which",
+            "schedule",
+            "trainer",
+            "treadmill",
+            "indoor",
+            "training"
+          ],
+          "name": "Guest World Calendar",
+          "description": "This skill assists indoor cycling and running enthusiasts with a convenient way to learn what guest world is currently available in an online virtual training game. This skill does not require an account or special hardware.",
+          "smallIconUri": "file://assets/images/en-US_smallIconUri.png",
+          "largeIconUri": "file://assets/images/en-US_largeIconUri.png"
+        },
+        "en-CA": {
+          "summary": "Kick your indoor training planning up a notch. Quickly find out what guest worlds are active and when your favorites are up next.",
+          "examplePhrases": [
+            "Alexa, ask Which World, where can I ride today?",
+            "Alexa, ask Which World, what guest world is next?",
+            "Alexa, ask Which World, when can I run in London?"
+          ],
+          "keywords": [
+            "guest",
+            "world",
+            "calendar",
+            "course",
+            "which",
+            "schedule",
+            "trainer",
+            "treadmill",
+            "indoor",
+            "training"
+          ],
+          "name": "Guest World Calendar",
+          "description": "This skill assists indoor cycling and running enthusiasts with a convenient way to learn what guest world is currently available in an online virtual training game. This skill does not require an account or special hardware.",
+          "smallIconUri": "file://assets/images/en-CA_smallIconUri.png",
+          "largeIconUri": "file://assets/images/en-CA_largeIconUri.png"
+        },
+        "en-AU": {
+          "summary": "Kick your indoor training planning up a notch. Quickly find out what guest worlds are active and when your favorites are up next.",
+          "examplePhrases": [
+            "Alexa, ask Which World, where can I ride today?",
+            "Alexa, ask Which World, what guest world is next?",
+            "Alexa, ask Which World, when can I run in London?"
+          ],
+          "keywords": [
+            "guest",
+            "world",
+            "calendar",
+            "course",
+            "which",
+            "schedule",
+            "trainer",
+            "treadmill",
+            "indoor",
+            "training"
+          ],
+          "name": "Guest World Calendar",
+          "description": "This skill assists indoor cycling and running enthusiasts with a convenient way to learn what guest world is currently available in an online virtual training game. This skill does not require an account or special hardware.",
+          "smallIconUri": "file://assets/images/en-AU_smallIconUri.png",
+          "largeIconUri": "file://assets/images/en-AU_largeIconUri.png"
+        },
+        "en-GB": {
+          "summary": "Kick your indoor training planning up a notch. Quickly find out what guest worlds are active and when your favorites are up next.",
+          "examplePhrases": [
+            "Alexa, ask Which World, where can I ride today?",
+            "Alexa, ask Which World, what guest world is next?",
+            "Alexa, ask Which World, when can I run in London?"
+          ],
+          "keywords": [
+            "guest",
+            "world",
+            "calendar",
+            "course",
+            "which",
+            "schedule",
+            "trainer",
+            "treadmill",
+            "indoor",
+            "training"
+          ],
+          "name": "Guest World Calendar",
+          "description": "This skill assists indoor cycling and running enthusiasts with a convenient way to learn what guest world is currently available in an online virtual training game. This skill does not require an account or special hardware.",
+          "smallIconUri": "file://assets/images/en-GB_smallIconUri.png",
+          "largeIconUri": "file://assets/images/en-GB_largeIconUri.png"
+        }
+      },
+      "isAvailableWorldwide": false,
+      "testingInstructions": "Nothing needed. To verify the responses are accurate, refer to publicly available guest world calendars here  https://zwiftinsider.com/schedule/ or here https://whatsonzwift.com/",
+      "category": "EXERCISE_AND_WORKOUT",
+      "distributionCountries": [
+        "US",
+        "CA",
+        "AU",
+        "IE",
+        "VI",
+        "VG",
+        "GB",
+        "NZ"
+      ]
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:us-east-1:569215640061:function:44ca3fd7-539b-4349-9c93-275ba6fd3184:Release_6"
+        },
+        "interfaces": []
+      }
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "locales": {
+        "en-US": {},
+        "en-CA": {},
+        "en-AU": {},
+        "en-GB": {}
+      },
+      "containsAds": false,
+      "isExportCompliant": true,
+      "isChildDirected": false,
+      "usesPersonalInfo": false
+    }
+  }
+}
