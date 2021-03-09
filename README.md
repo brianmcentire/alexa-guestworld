@@ -21,5 +21,5 @@ I developed this code to "scratch an itch" and decided to share it with Zwifters
   
 This skill has users from all corners of the world. I hope you enjoy it too!
 
-###Upcoming features
+### Upcoming features
 Currently, calendar data must be updated manually at the begginning of each month. Data is pulled from the Zwift community website, transformed, and then uploaded to S3 for access by this skill. Pulling data directly from Zwift's API would eliminate the need for manual updates.
