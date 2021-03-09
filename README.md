@@ -19,4 +19,7 @@ Some of the questions (intents) this skill will answer are:
 I developed this code to "scratch an itch" and decided to share it with Zwifters all over the world. It is available for free and is published in the Alexa Store:
   * https://www.amazon.com/B-Scott-Guest-World-Calendar/dp/B084ZVL2Y8/ref=sr_1_1?dchild=1&keywords=guest+world+calendar&qid=1615303648&s=digital-skills&sr=1-1#customerReviews
   
-This skill has users from all corners of the globe. I hope you enjoy it too!
+This skill has users from all corners of the world. I hope you enjoy it too!
+
+Upcoming features:
+Currently, calendar data must be updated manually at the begginning of each month. Data is pulled from the Zwift community website, transformed, and then uploaded to S3 for access by this skill. Pulling data directly from Zwift's API would eliminate the need for manual updates.
