@@ -134,6 +134,22 @@
           "values": [
             {
               "name": {
+                "value": "Makuri Islands",
+                "synonyms": [
+                  "the new islands",
+                  "the islands",
+                  "mercury islands",
+                  "my quarry islands",
+                  "aquarium",
+                  "macquarie islands",
+                  "macquarie island",
+                  "ma core e islands",
+                  "Ma coor ri islands"
+                ]
+              }
+            },
+            {
+              "name": {
                 "value": "France"
               }
             },
@@ -369,5 +385,5 @@
       ]
     }
   },
-  "version": "5"
+  "version": "8"
 }

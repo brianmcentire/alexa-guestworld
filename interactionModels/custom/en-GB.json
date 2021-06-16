@@ -40,6 +40,10 @@
             }
           ],
           "samples": [
+            "what are the current {worldReference}",
+            "what are today\u0027s {worldReference}",
+            "what {worldReference} are {availableReference} {optionalToday}",
+            "what {worldReference} are currently {availableReference}",
             "what {worldReference} can i {Activity} in today",
             "what {worldReference} is currently {availableReference}",
             "what {worldReference} is {availableReference} {optionalToday}",
@@ -95,6 +99,7 @@
             }
           ],
           "samples": [
+            "what {worldReference} are next",
             "what is the next {availableReference} {worldReference}",
             "what {worldReference} is next",
             "when does the {worldReference} change"
@@ -117,6 +122,7 @@
             }
           ],
           "samples": [
+            "what {worldReference} are {availableReference} tomorrow",
             "what {worldReference} is {availableReference} tomorrow",
             "what {worldReference} can i {Activity} in tomorrow",
             "where can I {Activity} tomorrow"
@@ -126,6 +132,35 @@
       "types": [
         {
           "values": [
+            {
+              "name": {
+                "value": "Makuri Islands",
+                "synonyms": [
+                  "the new islands",
+                  "the islands",
+                  "mercury islands",
+                  "my quarry islands",
+                  "aquarium",
+                  "macquarie islands",
+                  "macquarie island",
+                  "ma core e islands",
+                  "Ma coor ri islands"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "France"
+              }
+            },
+            {
+              "name": {
+                "value": "Paris",
+                "synonyms": [
+                  "pairs, pears"
+                ]
+              }
+            },
             {
               "name": {
                 "value": "Innsbruck",
@@ -222,6 +257,7 @@
               "name": {
                 "value": "ride",
                 "synonyms": [
+                  "ride on",
                   "mountain bike",
                   "cycle",
                   "bike"
@@ -238,6 +274,21 @@
         },
         {
           "values": [
+            {
+              "name": {
+                "value": "guest worlds"
+              }
+            },
+            {
+              "name": {
+                "value": "maps"
+              }
+            },
+            {
+              "name": {
+                "value": "worlds"
+              }
+            },
             {
               "name": {
                 "value": "map"
@@ -290,6 +341,11 @@
           "values": [
             {
               "name": {
+                "value": "todays"
+              }
+            },
+            {
+              "name": {
                 "value": "now"
               }
             },
@@ -329,5 +385,5 @@
       ]
     }
   },
-  "version": "3"
+  "version": "5"
 }
