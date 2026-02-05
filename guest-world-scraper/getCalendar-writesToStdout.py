@@ -1,12 +1,16 @@
 #!/usr/bin/python3
 
-# Connect to Zwift website and scrap the GuestWorld information into a simple CSV file saved on S3
+# Connect to schedule source and scrap the GuestWorld information into a simple CSV file saved on S3
 
 from lxml import html
 import requests
 import json
+import boto3
 
-page = requests.get('https://community.zwift.com')
+ssm = boto3.client('ssm', region_name='us-east-1')
+scraper_url = ssm.get_parameter(Name='/guestworld/scraper-url')['Parameter']['Value']
+
+page = requests.get(scraper_url)
 tree = html.fromstring(page.content)
 schedule = tree.xpath('//script[@id="calendar-data"]/text()')
 cal=json.loads(schedule[0])

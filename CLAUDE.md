@@ -22,7 +22,7 @@ Alexa Skill ("Guest World Calendar") that tells Zwift users which virtual worlds
 **Interaction models** (`interactionModels/custom/en-*.json`) — four locale variants (en-US, en-CA, en-AU, en-GB), identical structure. The `GuestWorldName` slot uses `AMAZON.AT_CITY` type with extensive synonyms for voice recognition of world names.
 
 **Guest world scraper** (`guest-world-scraper/`):
-- `getCalendar-writesToStdout.py` — scrapes `https://community.zwift.com`, extracts JSON from `<script id="calendar-data">`, outputs `WORLDNAME,day` to stdout
+- `getCalendar-writesToStdout.py` — scrapes the schedule source (URL configured in SSM parameter `/guestworld/scraper-url`), extracts JSON from `<script id="calendar-data">`, outputs `WORLDNAME,day` to stdout
 - `getCal` — bash wrapper that pipes scraper through `sed` to expand single world names into paired world availability (e.g., `FRANCE` → `France and Paris`)
 - Output: `GuestWorlds.csv` uploaded to S3; archived copies use `GuestWorlds[YYYYMM].csv` naming
 
@@ -56,6 +56,10 @@ Always available: Watopia (not in CSV, hardcoded in WhenWorldIntentHandler)
 - Scraper toggle: `cal['months'][0]` vs `cal['months'][1]` must be manually switched near month end when next month's data appears
 - `lastDayOfMonth` uses `datetime.now()` (system time) while day calculations use Halifax time — potential mismatch around midnight UTC
 
+## Configuration
+
+The scraper source URL is stored in AWS SSM Parameter Store at `/guestworld/scraper-url`. Set this parameter via the AWS console or CLI — no URL values are stored in the repo.
+
 ## Validation
 
-Verify skill responses against: https://zwiftinsider.com/schedule/ or https://whatsonzwift.com/
+Verify skill responses against publicly available Zwift guest world calendars.
