@@ -28,11 +28,17 @@ Alexa Skill ("Guest World Calendar") that tells Zwift users which virtual worlds
 
 **Monthly data refresh:** An EC2 instance runs the scraper at 11:55 PM on the last day of each month, uploads to S3. The Lambda reads this CSV on cold start.
 
+## AWS Account Layout
+
+The project spans two AWS accounts:
+- **Infrastructure account** — owns the EC2 scraper instance, S3 bucket (`guestworldskill`), and SSM parameters. The EC2 instance role (`GuestWorldS3UpdaterEC2Role`) has S3 write and SSM read permissions.
+- **Alexa-managed account** — hosts the Lambda function, provisioned by the Alexa Skills Kit. Reads from the S3 bucket in the infrastructure account cross-account.
+
 ## Data Flow
 
 ```
-Zwift community site → scraper (EC2, monthly) → GuestWorlds.csv (S3)
-                                                       ↓
+Schedule source → scraper (EC2, monthly) → GuestWorlds.csv (S3, infrastructure account)
+                                                       ↓ (cross-account read)
 User → Alexa → Lambda cold start reads CSV → worldList[day] → spoken response
 ```
 
@@ -58,7 +64,8 @@ Always available: Watopia (not in CSV, hardcoded in WhenWorldIntentHandler)
 
 ## Configuration
 
-The scraper source URL is stored in AWS SSM Parameter Store at `/guestworld/scraper-url`. Set this parameter via the AWS console or CLI — no URL values are stored in the repo.
+- **Scraper source URL** — stored in SSM Parameter Store at `/guestworld/scraper-url` (infrastructure account, us-east-1). Set via AWS console or CLI — no URL values are stored in the repo.
+- **EC2 IAM role** — `GuestWorldS3UpdaterEC2Role` with policies for S3 write (`GuestWorldScraperS3Access`) and SSM read (`AmazonEC2RoleforSSM`).
 
 ## Validation
 

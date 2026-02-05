@@ -14,6 +14,12 @@ An Alexa Skill that helps Zwift users (indoor cyclists and runners) quickly chec
 
 ## Current Architecture
 
+### AWS Account Layout
+
+The project spans two AWS accounts:
+- **Infrastructure account** — EC2 scraper, S3 bucket, SSM parameters
+- **Alexa-managed account** — Lambda function (provisioned by Alexa Skills Kit), reads from S3 cross-account
+
 ### Components
 
 1. **Alexa Skill Interface**
@@ -23,12 +29,12 @@ An Alexa Skill that helps Zwift users (indoor cyclists and runners) quickly chec
 
 2. **AWS Lambda Function** (`lambda/lambda_function.py`)
    - Python-based handler using Alexa Skills Kit SDK
-   - Reads calendar data from S3 on each invocation
+   - Runs in the Alexa-managed account; reads calendar data from S3 cross-account
    - Uses Halifax timezone (America/Halifax, UTC-4) for day calculations
    - World changes happen at midnight Halifax time (8pm Los Angeles time)
 
 3. **Data Storage**
-   - S3 bucket: `guestworldskill`
+   - S3 bucket: `guestworldskill` (infrastructure account)
    - File: `GuestWorlds.csv`
    - Format: `world_name(s),day_number`
 
@@ -39,7 +45,8 @@ An Alexa Skill that helps Zwift users (indoor cyclists and runners) quickly chec
    - Outputs CSV format to stdout
 
 5. **Automation**
-   - EC2 instance runs at 11:55pm on last day of each month
+   - EC2 instance (`GuestWorldS3Updater`) runs at 11:55pm on last day of each month
+   - IAM role `GuestWorldS3UpdaterEC2Role` provides S3 write and SSM read access
    - Processes new calendar for upcoming month
    - Uploads two files to S3:
      - `GuestWorlds.csv` (generic name, used by Lambda)
@@ -123,7 +130,7 @@ Makuri Islands and New York,8
 
 - **Language:** Python 3
 - **Alexa SDK:** ask-sdk-core
-- **AWS Services:** Lambda, S3, EC2
+- **AWS Services:** Lambda, S3, EC2, SSM Parameter Store
 - **Dependencies:**
   - boto3 (AWS SDK)
   - python-dateutil
@@ -132,9 +139,9 @@ Makuri Islands and New York,8
 
 ## Deployment
 
-- Lambda function ARN: `arn:aws:lambda:us-east-1:569215640061:function:44ca3fd7-539b-4349-9c93-275ba6fd3184:Release_8`
-- S3 bucket: `guestworldskill`
-- Skill ID: B084ZVL2Y8
+- Lambda function: hosted in Alexa-managed account (us-east-1), provisioned by Alexa Skills Kit
+- S3 bucket: `guestworldskill` (infrastructure account)
+- SSM parameter: `/guestworld/scraper-url` (infrastructure account, us-east-1)
 
 ## User Feedback
 

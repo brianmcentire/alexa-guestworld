@@ -1,7 +1,6 @@
 #!/bin/bash
 #
-# Webscrape to get the current month's guest world list, then
-# run through set to translate for multiple guest worlds availability
+# Webscrape to get the current month's guest world list
 #
 
-./getCalendar-writesToStdout.py | sed 's/FRANCE/France and Paris/g; s/LONDON/London and Yorkshire/g; s/NEWYORK/New York and Richmond/g; s/YORKSHIRE/Yorkshire and Innsbruck/g; s/RICHMOND/Richmond and London/g; s/INNSBRUCK/Innsbruck and Richmond/g' > GuestWorlds.csv
+./getCalendar-writesToStdout.py > GuestWorlds.csv
