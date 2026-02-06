@@ -38,8 +38,8 @@ def lambda_handler(event, context):
 
     # Write to S3
     s3 = boto3.client("s3")
-    s3.put_object(Bucket=S3_BUCKET, Key="GuestWorlds.csv", Body=csv_content)
-    s3.put_object(Bucket=S3_BUCKET, Key=f"GuestWorlds{archive_suffix}.csv", Body=csv_content)
+    s3.put_object(Bucket=S3_BUCKET, Key="GuestWorlds.csv", Body=csv_content, ACL="public-read")
+    s3.put_object(Bucket=S3_BUCKET, Key=f"GuestWorlds{archive_suffix}.csv", Body=csv_content, ACL="public-read")
 
     return {
         "statusCode": 200,

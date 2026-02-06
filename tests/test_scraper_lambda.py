@@ -84,10 +84,10 @@ class TestScraperLambdaHappyPath:
 
         expected_csv = "Yorkshire and London,1\nParis and France,2\n"
         assert put_calls[0] == call(
-            Bucket="guestworldskill", Key="GuestWorlds.csv", Body=expected_csv
+            Bucket="guestworldskill", Key="GuestWorlds.csv", Body=expected_csv, ACL="public-read"
         )
         assert put_calls[1] == call(
-            Bucket="guestworldskill", Key="GuestWorlds202602.csv", Body=expected_csv
+            Bucket="guestworldskill", Key="GuestWorlds202602.csv", Body=expected_csv, ACL="public-read"
         )
 
         mock_response.raise_for_status.assert_called_once()
