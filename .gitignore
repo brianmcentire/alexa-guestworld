@@ -20,6 +20,9 @@ venv/
 *.swp
 *.swo
 
+# Build artifacts
+scraper-lambda/build/
+
 # OS
 .DS_Store
 Thumbs.db

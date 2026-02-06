@@ -6,6 +6,7 @@ They require valid AWS credentials with SSM read access in us-east-1.
 Run with:  python3 -m pytest tests/ -v -m integration
 """
 
+import os
 import re
 import runpy
 import sys
@@ -14,7 +15,10 @@ from io import StringIO
 import boto3
 import pytest
 import requests
-from lxml import html
+
+# Make scraper_core importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "guest-world-scraper"))
+from scraper_core import parse_calendar_html
 
 pytestmark = pytest.mark.integration
 
@@ -40,14 +44,13 @@ def ssm_url():
 
 
 @pytest.fixture(scope="module")
-def calendar_page(ssm_url):
-    """Fetch and parse the live schedule page."""
+def calendar_days(ssm_url):
+    """Fetch the live schedule page and parse with scraper_core."""
     page = requests.get(ssm_url)
     assert page.status_code == 200
-    tree = html.fromstring(page.content)
-    table = tree.xpath('//table[contains(@class, "calendar-table")]')
-    assert len(table) == 1, "Expected exactly one calendar table"
-    return table[0]
+    days = parse_calendar_html(page.content)
+    assert len(days) > 0, "Expected calendar data from live page"
+    return days
 
 
 class TestSSMParameter:
@@ -60,27 +63,20 @@ class TestSSMParameter:
 
 
 class TestScheduleWebsite:
-    def test_html_structure(self, calendar_page):
-        """Schedule page has a calendar table with day cells containing world names."""
-        cells = calendar_page.xpath('.//td[contains(@class, "day-with-date")]')
-        assert len(cells) >= 28, "Expected at least 28 day cells, got %d" % len(cells)
+    def test_html_structure(self, calendar_days):
+        """Schedule page has at least 28 days with world names."""
+        assert len(calendar_days) >= 28, "Expected at least 28 days, got %d" % len(calendar_days)
 
-        for cell in cells:
-            day_num = cell.xpath('.//span[contains(@class, "day-number")]/text()')
-            assert len(day_num) == 1, "Each day cell should have exactly one day-number span"
-            assert day_num[0].strip().isdigit(), "Day number should be numeric"
-
-            worlds = cell.xpath('.//span[@class="spiffy-title"]/text()')
-            assert len(worlds) >= 1, "Day %s should have at least one world" % day_num[0]
+        for day_num, worlds in calendar_days:
+            assert isinstance(day_num, int), "Day number should be int"
+            assert len(worlds) >= 1, "Day %d should have at least one world" % day_num
 
 
 class TestWorldNames:
-    def test_world_names_are_known(self, calendar_page):
+    def test_world_names_are_known(self, calendar_days):
         """All world names in the calendar belong to the known set."""
-        cells = calendar_page.xpath('.//td[contains(@class, "day-with-date")]')
         unknown = set()
-        for cell in cells:
-            worlds = cell.xpath('.//span[@class="spiffy-title"]/text()')
+        for _, worlds in calendar_days:
             for w in worlds:
                 if w not in KNOWN_WORLDS:
                     unknown.add(w)

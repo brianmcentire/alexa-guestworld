@@ -2,31 +2,22 @@
 
 # Connect to schedule source and scrape the GuestWorld information into a simple CSV file saved on S3
 
-from lxml import html
+import os
+import sys
+
 import requests
 import boto3
+
+# Allow importing scraper_core from the same directory when run as a script
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from scraper_core import parse_calendar_html, format_csv
 
 ssm = boto3.client('ssm', region_name='us-east-1')
 scraper_url = ssm.get_parameter(Name='/guestworld/scraper-url')['Parameter']['Value']
 
 page = requests.get(scraper_url)
-tree = html.fromstring(page.content)
 
-# Find the calendar table and extract day cells with dates
-table = tree.xpath('//table[contains(@class, "calendar-table")]')[0]
-cells = table.xpath('.//td[contains(@class, "day-with-date")]')
-
-# Collect (day_number, world_names) for each cell
-days = []
-for cell in cells:
-    day_num = cell.xpath('.//span[contains(@class, "day-number")]/text()')
-    worlds = cell.xpath('.//span[@class="spiffy-title"]/text()')
-    if day_num and worlds:
-        days.append((int(day_num[0]), worlds))
-
-days.sort(key=lambda x: x[0])
-
-dayInc = 0
-for day_num, worlds in days:
-    dayInc += 1
-    print(" and ".join(worlds) + "," + str(dayInc))
+days = parse_calendar_html(page.content)
+csv_output = format_csv(days)
+if csv_output:
+    print(csv_output, end="")
