@@ -28,7 +28,7 @@ class TestLaunchRequestHandler:
 
 class TestTodaysWorldIntentHandler:
     def test_mid_month(self, mock_handler_input, set_lambda_globals, world_list):
-        set_lambda_globals(dayNumber=5, day=5, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="TodaysWorldIntent")
         handler = lambda_function.TodaysWorldIntentHandler()
 
@@ -39,6 +39,17 @@ class TestTodaysWorldIntentHandler:
         assert world_list[5] in spoken
         assert "Todays Guest Worlds" in spoken
 
+    def test_data_unavailable(self, mock_handler_input, set_lambda_globals):
+        set_lambda_globals(day=5, lastDayOfMonth=31)
+        lambda_function.worldList = None
+        hi = mock_handler_input(intent_name="TodaysWorldIntent")
+        handler = lambda_function.TodaysWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "temporarily unavailable" in spoken
+
 
 # ---------------------------------------------------------------------------
 # TomorrowsWorldIntentHandler
@@ -46,7 +57,7 @@ class TestTodaysWorldIntentHandler:
 
 class TestTomorrowsWorldIntentHandler:
     def test_mid_month(self, mock_handler_input, set_lambda_globals, world_list):
-        set_lambda_globals(dayNumber=10, day=10, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="TomorrowsWorldIntent")
         handler = lambda_function.TomorrowsWorldIntentHandler()
 
@@ -58,7 +69,7 @@ class TestTomorrowsWorldIntentHandler:
         assert "Tomorrow" in spoken
 
     def test_end_of_month(self, mock_handler_input, set_lambda_globals, world_list):
-        set_lambda_globals(dayNumber=31, day=31, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=31, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="TomorrowsWorldIntent")
         handler = lambda_function.TomorrowsWorldIntentHandler()
 
@@ -69,14 +80,15 @@ class TestTomorrowsWorldIntentHandler:
         assert world_list[31] in spoken
 
     def test_day_before_last(self, mock_handler_input, set_lambda_globals, world_list):
-        # dayNumber + 1 == lastDayOfMonth → still within bounds (< lastDayOfMonth is false when ==)
-        set_lambda_globals(dayNumber=30, day=30, lastDayOfMonth=31, worldList=world_list)
+        # Day 30 of a 31-day month: day < last_day (30 < 31) so tomorrow's worlds are returned
+        set_lambda_globals(day=30, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="TomorrowsWorldIntent")
         handler = lambda_function.TomorrowsWorldIntentHandler()
 
         handler.handle(hi)
 
         spoken = hi.response_builder.speak.call_args[0][0]
+        assert "Tomorrow" in spoken
         assert world_list[31] in spoken
 
 
@@ -86,7 +98,7 @@ class TestTomorrowsWorldIntentHandler:
 
 class TestWhenWorldIntentHandler:
     def test_watopia_always_available(self, mock_handler_input, set_lambda_globals, world_list):
-        set_lambda_globals(dayNumber=5, day=5, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Watopia")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -99,7 +111,7 @@ class TestWhenWorldIntentHandler:
 
     def test_world_available_today(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 3 has "Yorkshire and Innsbruck"
-        set_lambda_globals(dayNumber=3, day=3, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=3, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -110,7 +122,7 @@ class TestWhenWorldIntentHandler:
 
     def test_world_available_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 2 has "paris", day 3 has "Yorkshire and Innsbruck"
-        set_lambda_globals(dayNumber=2, day=2, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=2, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -121,7 +133,7 @@ class TestWhenWorldIntentHandler:
 
     def test_world_available_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 1 = paris, Yorkshire first appears on day 3 → 2 days away
-        set_lambda_globals(dayNumber=1, day=1, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -132,7 +144,7 @@ class TestWhenWorldIntentHandler:
 
     def test_world_not_found_this_month(self, mock_handler_input, set_lambda_globals, world_list):
         # Ask for London starting from day 28 — London doesn't appear after day 24
-        set_lambda_globals(dayNumber=28, day=28, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=28, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="London")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -143,7 +155,7 @@ class TestWhenWorldIntentHandler:
 
     def test_case_insensitive_match(self, mock_handler_input, set_lambda_globals, world_list):
         # "new york" should match "New York and Richmond" on day 10
-        set_lambda_globals(dayNumber=10, day=10, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="New York")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -151,6 +163,16 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available now" in spoken
+
+    def test_slot_resolution_failure(self, mock_handler_input, set_lambda_globals, world_list):
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
+        hi = mock_handler_input(intent_name="WhenWorldIntent", slot_resolution_fails=True)
+        handler = lambda_function.WhenWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "didn't catch" in spoken
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +185,7 @@ class TestNextWorldIntentHandler:
         midnight = datetime(2025, 1, 16, 0, 0, 0)
         # Day 1 and day 2 are both "paris", so set day=2 where day 3 differs
         set_lambda_globals(
-            dayNumber=2, day=2, lastDayOfMonth=31, worldList=world_list,
+            day=2, lastDayOfMonth=31, worldList=world_list,
             nowInHalifax=now, midnightInHalifax=midnight,
         )
         hi = mock_handler_input(intent_name="NextWorldIntent")
@@ -179,7 +201,7 @@ class TestNextWorldIntentHandler:
 
     def test_world_changes_in_two_days(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 1 and 2 are both "paris", day 3 is different → from day 1, next change is day 3 (2 days)
-        set_lambda_globals(dayNumber=1, day=1, lastDayOfMonth=31, worldList=world_list)
+        set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="NextWorldIntent")
         handler = lambda_function.NextWorldIntentHandler()
 
@@ -189,15 +211,10 @@ class TestNextWorldIntentHandler:
         assert "in two days" in spoken
 
     def test_world_changes_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
-        # Day 3,4 are Yorkshire; day 5 differs → from day 3, change in 2 days
-        # Let's use day 21,22 Yorkshire; day 23 London → 2 days
-        # For a larger N, we need a longer same-world streak.
-        # Days 14,15 London, 16 Richmond → from day 14, change is day 16, 2 days
-        # Days 1,2 paris → day 3 Yorkshire, from day 1 that's 2 days.
         # Use a custom worldList for a 3-day gap
         custom = list(world_list)
         custom[5] = custom[3]  # Make days 3,4,5 all the same
-        set_lambda_globals(dayNumber=3, day=3, lastDayOfMonth=31, worldList=custom)
+        set_lambda_globals(day=3, lastDayOfMonth=31, worldList=custom)
         hi = mock_handler_input(intent_name="NextWorldIntent")
         handler = lambda_function.NextWorldIntentHandler()
 
@@ -209,7 +226,7 @@ class TestNextWorldIntentHandler:
     def test_no_change_until_end_of_month(self, mock_handler_input, set_lambda_globals):
         # All remaining days are the same world
         wl = ["IndexZero"] + ["Same World"] * 31
-        set_lambda_globals(dayNumber=28, day=28, lastDayOfMonth=31, worldList=wl)
+        set_lambda_globals(day=28, lastDayOfMonth=31, worldList=wl)
         hi = mock_handler_input(intent_name="NextWorldIntent")
         handler = lambda_function.NextWorldIntentHandler()
 
@@ -225,7 +242,7 @@ class TestNextWorldIntentHandler:
 
 class TestZwiftTimeIntentHandler:
     def test_returns_day_number(self, mock_handler_input, set_lambda_globals):
-        set_lambda_globals(dayNumber=17)
+        set_lambda_globals(day=17)
         hi = mock_handler_input(intent_name="ZwiftTimeIntent")
         handler = lambda_function.ZwiftTimeIntentHandler()
 
@@ -235,6 +252,21 @@ class TestZwiftTimeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "17" in spoken
         assert "Halifax" in spoken
+
+    def test_uses_fresh_time(self, mock_handler_input, set_lambda_globals):
+        # First call with day=10, second with day=25 — verify it picks up the change
+        set_lambda_globals(day=10)
+        hi = mock_handler_input(intent_name="ZwiftTimeIntent")
+        handler = lambda_function.ZwiftTimeIntentHandler()
+        handler.handle(hi)
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "10" in spoken
+
+        set_lambda_globals(day=25)
+        hi2 = mock_handler_input(intent_name="ZwiftTimeIntent")
+        handler.handle(hi2)
+        spoken2 = hi2.response_builder.speak.call_args[0][0]
+        assert "25" in spoken2
 
 
 # ---------------------------------------------------------------------------

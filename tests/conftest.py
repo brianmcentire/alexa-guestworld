@@ -101,30 +101,33 @@ _boto3_patcher.stop()
 
 @pytest.fixture
 def set_lambda_globals():
-    """Return a helper that overwrites lambda_function globals for a test.
+    """Return a helper that sets worldList and mocks _get_time_state for a test.
 
     Usage:
-        set_lambda_globals(dayNumber=5, day=5, lastDayOfMonth=31)
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
     """
 
-    original = {
-        "dayNumber": lambda_function.dayNumber,
-        "day": lambda_function.day,
-        "lastDayOfMonth": lambda_function.lastDayOfMonth,
-        "worldList": lambda_function.worldList,
-        "nowInHalifax": lambda_function.nowInHalifax,
-        "midnightInHalifax": lambda_function.midnightInHalifax,
-    }
+    original_world_list = lambda_function.worldList
+    patchers = []
 
-    def _set(**kwargs):
-        for key, value in kwargs.items():
-            setattr(lambda_function, key, value)
+    def _set(day=1, lastDayOfMonth=31, worldList=None,
+             nowInHalifax=None, midnightInHalifax=None):
+        if worldList is not None:
+            lambda_function.worldList = worldList
+        now = nowInHalifax or datetime(2025, 1, day, 12, 0, 0)
+        midnight = midnightInHalifax or (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0)
+        patcher = patch.object(
+            lambda_function, '_get_time_state',
+            return_value=(now, day, midnight, lastDayOfMonth))
+        patcher.start()
+        patchers.append(patcher)
 
     yield _set
 
-    # Restore originals after each test
-    for key, value in original.items():
-        setattr(lambda_function, key, value)
+    lambda_function.worldList = original_world_list
+    for p in patchers:
+        p.stop()
 
 
 @pytest.fixture
@@ -141,9 +144,11 @@ def mock_handler_input():
         intent_name  – e.g. "TodaysWorldIntent"
         request_type – e.g. "LaunchRequest" (defaults to "IntentRequest")
         slot_value   – the resolved GuestWorldName value (for WhenWorldIntent)
+        slot_resolution_fails – if True, slot resolution chain raises AttributeError
     """
 
-    def _build(intent_name=None, request_type=None, slot_value=None):
+    def _build(intent_name=None, request_type=None, slot_value=None,
+               slot_resolution_fails=False):
         from ask_sdk_model import Intent, IntentRequest
 
         hi = MagicMock()
@@ -164,6 +169,10 @@ def mock_handler_input():
                 slot = MagicMock()
                 slot.resolutions.resolutions_per_authority.__getitem__.return_value \
                     .values.__getitem__.return_value.value.name = slot_value
+                intent_obj.slots = {"GuestWorldName": slot}
+            elif slot_resolution_fails:
+                slot = MagicMock()
+                slot.resolutions = None
                 intent_obj.slots = {"GuestWorldName": slot}
 
             request_obj = IntentRequest(intent=intent_obj)
