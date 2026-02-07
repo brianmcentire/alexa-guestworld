@@ -5,6 +5,7 @@
 # session persistence, api calls, and more.
 # This sample is built using the handler classes approach in skill builder.
 import logging
+import re
 import ask_sdk_core.utils as ask_utils
 from datetime import datetime
 from datetime import timedelta
@@ -43,6 +44,59 @@ def _data_unavailable_response(handler_input):
                  "Please try again later.")
         return handler_input.response_builder.speak(speak).response
     return None
+
+
+def _ordinal_date_string(dt):
+    """Return a spoken date like 'February the 17th'."""
+    day = dt.day
+    if 11 <= day <= 13:
+        suffix = "th"
+    elif day % 10 == 1:
+        suffix = "st"
+    elif day % 10 == 2:
+        suffix = "nd"
+    elif day % 10 == 3:
+        suffix = "rd"
+    else:
+        suffix = "th"
+    return dt.strftime("%B") + " the " + str(day) + suffix
+
+
+def _parse_amazon_date(date_str, now):
+    """Parse an AMAZON.DATE slot value into a list of (day_number, datetime) tuples.
+
+    Only returns days within the current month. Returns [] for unparseable or
+    out-of-range values.
+    """
+    if not date_str:
+        return []
+
+    last_day = calendar.monthrange(now.year, now.month)[1]
+
+    # Weekend format: YYYY-Www-WE → Saturday + Sunday of that ISO week
+    m = re.match(r'^(\d{4})-W(\d{2})-WE$', date_str)
+    if m:
+        year, week = int(m.group(1)), int(m.group(2))
+        try:
+            saturday = datetime.strptime(f"{year}-W{week:02d}-6", "%G-W%V-%u")
+            sunday = datetime.strptime(f"{year}-W{week:02d}-7", "%G-W%V-%u")
+        except ValueError:
+            return []
+        results = []
+        for d in [saturday, sunday]:
+            if d.year == now.year and d.month == now.month and 1 <= d.day <= last_day:
+                results.append((d.day, d))
+        return results
+
+    # Specific date: YYYY-MM-DD
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return []
+
+    if dt.year == now.year and dt.month == now.month and 1 <= dt.day <= last_day:
+        return [(dt.day, dt)]
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +141,7 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Welcome, you can say. What are todays guest worlds? Where can I ride tomorrow? What's Next? Or, when can I run in London?"
+        speak_output = "Welcome, you can say. What are todays guest worlds? Where can I ride tomorrow? What's available this weekend? What's Next? Or, when can I run in London?"
 
         return (
             handler_input.response_builder
@@ -190,7 +244,8 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
             elif (lookupDay - day) == 1:
                 speak_output += " will be available tomorrow."
             else:
-                speak_output += " will be available " + str(lookupDay - day) + " days from now."
+                speak_output += (" will be available in " + str(lookupDay - day)
+                                 + " days on " + _ordinal_date_string(now.replace(day=lookupDay)) + ".")
 
 
         return (
@@ -199,6 +254,101 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
                 # .ask("add a reprompt if you want to keep the session open for the user to respond")
                 .response
         )
+
+
+class WorldOnDateIntentHandler(AbstractRequestHandler):
+    """Handler for World On Date Intent — answers 'what can I ride on Saturday?'"""
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("WorldOnDateIntent")(handler_input)
+
+    def handle(self, handler_input):
+        logger.info("Handling WorldOnDateIntent")
+        error = _data_unavailable_response(handler_input)
+        if error:
+            return error
+        now, day, midnight, last_day = _get_time_state()
+
+        try:
+            date_str = handler_input.request_envelope.request.intent.slots['requestedDate'].value
+        except (AttributeError, KeyError, TypeError):
+            date_str = None
+
+        dates = _parse_amazon_date(date_str, now)
+
+        if not dates and date_str:
+            # Valid slot but different month or unparseable
+            speak = "I don't have the schedule for that date. I only have this month's calendar."
+            return handler_input.response_builder.speak(speak).response
+        elif not dates:
+            speak = "I didn't catch which date you asked about. Could you try again?"
+            return handler_input.response_builder.speak(speak).ask(speak).response
+
+        # Check for past dates
+        past = [(d, dt) for d, dt in dates if d < day]
+        future = [(d, dt) for d, dt in dates if d >= day]
+
+        if not future:
+            # All requested dates are in the past
+            speak = ("The " + _ordinal_date_string(past[0][1]).split("the ", 1)[1]
+                     + " has already passed and I don't have next month's calendar yet. "
+                     + worldList[day] + " are available today.")
+            return handler_input.response_builder.speak(speak).response
+
+        # Filter to only future/today dates
+        dates = future
+
+        if len(dates) == 1:
+            # Single date
+            d, dt = dates[0]
+            speak = "On " + _ordinal_date_string(dt) + ", the guest worlds will be " + worldList[d] + "."
+            return handler_input.response_builder.speak(speak).response
+
+        # Weekend (2 dates)
+        d1, dt1 = dates[0]
+        d2, dt2 = dates[1]
+
+        if worldList[d1] == worldList[d2]:
+            # Same worlds both days
+            # Determine if we need disambiguation (today is weekend and this is NOT this weekend)
+            today_is_weekend = now.weekday() >= 5  # 5=Saturday, 6=Sunday
+            this_weekend_days = set()
+            if today_is_weekend:
+                # Find this weekend's Saturday and Sunday
+                if now.weekday() == 5:  # Saturday
+                    this_weekend_days = {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                else:  # Sunday
+                    this_weekend_days = {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+
+            requested_days = {d1, d2}
+            if today_is_weekend and requested_days != this_weekend_days:
+                # "Next weekend" said on a weekend — need disambiguation
+                speak = ("On Saturday and Sunday, " + _ordinal_date_string(dt1)
+                         + " and " + _ordinal_date_string(dt2).split("the ", 1)[1]
+                         + ", the guest worlds will be " + worldList[d1] + ".")
+            else:
+                speak = ("This Saturday and Sunday, the guest worlds will be "
+                         + worldList[d1] + ".")
+            return handler_input.response_builder.speak(speak).response
+        else:
+            # Different worlds each day
+            today_is_weekend = now.weekday() >= 5
+            this_weekend_days = set()
+            if today_is_weekend:
+                if now.weekday() == 5:
+                    this_weekend_days = {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                else:
+                    this_weekend_days = {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+
+            requested_days = {d1, d2}
+            if today_is_weekend and requested_days != this_weekend_days:
+                speak = ("On Saturday " + _ordinal_date_string(dt1)
+                         + ", the guest worlds will be " + worldList[d1]
+                         + ". On Sunday " + _ordinal_date_string(dt2)
+                         + ", they will be " + worldList[d2] + ".")
+            else:
+                speak = ("On Saturday, the guest worlds will be " + worldList[d1]
+                         + ". On Sunday, they will be " + worldList[d2] + ".")
+            return handler_input.response_builder.speak(speak).response
 
 
 class ZwiftTimeIntentHandler(AbstractRequestHandler):
@@ -269,7 +419,7 @@ class HelpIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "You can say, what are today's guest worlds? Where can I ride tomorrow? What's Next? Or, when can I run in London?"
+        speak_output = "You can say, what are today's guest worlds? Where can I ride tomorrow? What's available this weekend? What's Next? Or, when can I run in London?"
 
         return (
             handler_input.response_builder
@@ -367,6 +517,7 @@ sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(TodaysWorldIntentHandler())
 sb.add_request_handler(TomorrowsWorldIntentHandler())
 sb.add_request_handler(WhenWorldIntentHandler())
+sb.add_request_handler(WorldOnDateIntentHandler())
 sb.add_request_handler(ZwiftTimeIntentHandler())
 sb.add_request_handler(NextWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())

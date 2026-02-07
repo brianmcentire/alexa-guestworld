@@ -145,10 +145,11 @@ def mock_handler_input():
         request_type – e.g. "LaunchRequest" (defaults to "IntentRequest")
         slot_value   – the resolved GuestWorldName value (for WhenWorldIntent)
         slot_resolution_fails – if True, slot resolution chain raises AttributeError
+        date_slot_value – the AMAZON.DATE string value (for WorldOnDateIntent)
     """
 
     def _build(intent_name=None, request_type=None, slot_value=None,
-               slot_resolution_fails=False):
+               slot_resolution_fails=False, date_slot_value=None):
         from ask_sdk_model import Intent, IntentRequest
 
         hi = MagicMock()
@@ -174,6 +175,14 @@ def mock_handler_input():
                 slot = MagicMock()
                 slot.resolutions = None
                 intent_obj.slots = {"GuestWorldName": slot}
+
+            # For WorldOnDateIntent, set the requestedDate slot value
+            if date_slot_value is not None:
+                date_slot = MagicMock()
+                date_slot.value = date_slot_value
+                if intent_obj.slots is None:
+                    intent_obj.slots = {}
+                intent_obj.slots["requestedDate"] = date_slot
 
             request_obj = IntentRequest(intent=intent_obj)
             hi.request_envelope.request = request_obj

@@ -127,6 +127,41 @@
             "what {worldReference} can i {Activity} in tomorrow",
             "where can I {Activity} tomorrow"
           ]
+        },
+        {
+          "name": "WorldOnDateIntent",
+          "slots": [
+            {
+              "name": "requestedDate",
+              "type": "AMAZON.DATE"
+            },
+            {
+              "name": "Activity",
+              "type": "ActivitySlot"
+            },
+            {
+              "name": "worldReference",
+              "type": "worldReferenceSlot"
+            },
+            {
+              "name": "availableReference",
+              "type": "availableReferenceSlot"
+            }
+          ],
+          "samples": [
+            "what can I {Activity} on {requestedDate}",
+            "what can I {Activity} {requestedDate}",
+            "where can I {Activity} on {requestedDate}",
+            "where can I {Activity} {requestedDate}",
+            "what {worldReference} are {availableReference} on {requestedDate}",
+            "what {worldReference} are {availableReference} {requestedDate}",
+            "what {worldReference} is {availableReference} on {requestedDate}",
+            "what {worldReference} is {availableReference} {requestedDate}",
+            "what {worldReference} can I {Activity} on {requestedDate}",
+            "what {worldReference} can I {Activity} {requestedDate}",
+            "what is {availableReference} on {requestedDate}",
+            "what is {availableReference} {requestedDate}"
+          ]
         }
       ],
       "types": [
