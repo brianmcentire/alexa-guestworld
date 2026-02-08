@@ -23,6 +23,10 @@ venv/
 # Build artifacts
 scraper-lambda/build/
 
+# ASK CLI
+.ask/
+ask-resources.json
+
 # OS
 .DS_Store
 Thumbs.db
