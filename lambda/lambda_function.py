@@ -178,6 +178,7 @@ class TodaysWorldIntentHandler(AbstractRequestHandler):
         return (
             handler_input.response_builder
                 .speak(speak_output)
+                .ask(" ")
                 .response
         )
 
@@ -204,6 +205,7 @@ class TomorrowsWorldIntentHandler(AbstractRequestHandler):
         return (
             handler_input.response_builder
                 .speak(speak_output)
+                .ask(" ")
                 .response
         )
 
@@ -259,7 +261,7 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
         return (
             handler_input.response_builder
                 .speak(speak_output)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .ask(" ")
                 .response
         )
 
@@ -286,7 +288,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
         if not dates and date_str:
             # Valid slot but different month or unparseable
             speak = "I don't have the schedule for that date. I only have this month's calendar."
-            return handler_input.response_builder.speak(speak).response
+            return handler_input.response_builder.speak(speak).ask(" ").response
         elif not dates:
             speak = "I didn't catch which date you asked about. Could you try again?"
             return handler_input.response_builder.speak(speak).ask(speak).response
@@ -300,7 +302,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             speak = ("The " + _ordinal_date_string(past[0][1]).split("the ", 1)[1]
                      + " has already passed and I don't have next month's calendar yet. "
                      + worldList[day] + " are available today.")
-            return handler_input.response_builder.speak(speak).response
+            return handler_input.response_builder.speak(speak).ask(" ").response
 
         # Filter to only future/today dates
         dates = future
@@ -309,7 +311,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             # Single date
             d, dt = dates[0]
             speak = "On " + _ordinal_date_string(dt) + ", the guest worlds will be " + worldList[d] + "."
-            return handler_input.response_builder.speak(speak).response
+            return handler_input.response_builder.speak(speak).ask(" ").response
 
         # Weekend (2 dates)
         d1, dt1 = dates[0]
@@ -336,7 +338,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             else:
                 speak = ("This Saturday and Sunday, the guest worlds will be "
                          + worldList[d1] + ".")
-            return handler_input.response_builder.speak(speak).response
+            return handler_input.response_builder.speak(speak).ask(" ").response
         else:
             # Different worlds each day
             today_is_weekend = now.weekday() >= 5
@@ -356,7 +358,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             else:
                 speak = ("On Saturday, the guest worlds will be " + worldList[d1]
                          + ". On Sunday, they will be " + worldList[d2] + ".")
-            return handler_input.response_builder.speak(speak).response
+            return handler_input.response_builder.speak(speak).ask(" ").response
 
 
 class ZwiftTimeIntentHandler(AbstractRequestHandler):
@@ -415,7 +417,8 @@ class NextWorldIntentHandler(AbstractRequestHandler):
         return (
             handler_input.response_builder
                 .speak(speak_output)
-            .response
+                .ask(" ")
+                .response
         )
 
 

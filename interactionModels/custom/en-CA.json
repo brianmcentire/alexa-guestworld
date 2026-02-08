@@ -50,7 +50,12 @@
             "where can I {Activity} {optionalToday}",
             "what is {availableReference}",
             "what is today\u0027s {worldReference}",
-            "what is the current {worldReference}"
+            "what is the current {worldReference}",
+            "which {worldReference} are {availableReference} {optionalToday}",
+            "which {worldReference} can I {Activity} in {optionalToday}",
+            "tell me the {worldReference} {optionalToday}",
+            "tell me what is {availableReference} {optionalToday}",
+            "what can I {Activity} {optionalToday}"
           ]
         },
         {
@@ -76,7 +81,12 @@
             "when will {GuestWorldName} be available",
             "when is {GuestWorldName} available",
             "when can I {Activity} {GuestWorldName}",
-            "when can I {Activity} in {GuestWorldName}"
+            "when can I {Activity} in {GuestWorldName}",
+            "when is {GuestWorldName}",
+            "when is {GuestWorldName} coming up",
+            "how long until {GuestWorldName}",
+            "is {GuestWorldName} available {optionalWatopiaIntentTimeframe}",
+            "tell me when {GuestWorldName} is available"
           ]
         },
         {
@@ -102,7 +112,11 @@
             "what {worldReference} are next",
             "what is the next {availableReference} {worldReference}",
             "what {worldReference} is next",
-            "when does the {worldReference} change"
+            "when does the {worldReference} change",
+            "what is next",
+            "what {worldReference} are coming next",
+            "when do the {worldReference} change",
+            "how long until the {worldReference} change"
           ]
         },
         {
@@ -125,7 +139,12 @@
             "what {worldReference} are {availableReference} tomorrow",
             "what {worldReference} is {availableReference} tomorrow",
             "what {worldReference} can i {Activity} in tomorrow",
-            "where can I {Activity} tomorrow"
+            "where can I {Activity} tomorrow",
+            "what about tomorrow",
+            "what is {availableReference} tomorrow",
+            "what are tomorrow\u0027s {worldReference}",
+            "which {worldReference} are {availableReference} tomorrow",
+            "tell me tomorrow\u0027s {worldReference}"
           ]
         },
         {
@@ -160,7 +179,10 @@
             "what {worldReference} can I {Activity} on {requestedDate}",
             "what {worldReference} can I {Activity} {requestedDate}",
             "what is {availableReference} on {requestedDate}",
-            "what is {availableReference} {requestedDate}"
+            "what is {availableReference} {requestedDate}",
+            "which {worldReference} are {availableReference} on {requestedDate}",
+            "which {worldReference} can I {Activity} on {requestedDate}",
+            "tell me what is {availableReference} on {requestedDate}"
           ]
         }
       ],
@@ -192,7 +214,8 @@
               "name": {
                 "value": "Paris",
                 "synonyms": [
-                  "pairs, pears"
+                  "pairs",
+                  "pears"
                 ]
               }
             },
@@ -231,6 +254,11 @@
             {
               "name": {
                 "value": "Yorkshire"
+              }
+            },
+            {
+              "name": {
+                "value": "Scotland"
               }
             },
             {
@@ -301,7 +329,15 @@
             },
             {
               "name": {
-                "value": "run"
+                "value": "run",
+                "synonyms": [
+                  "jog"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "race"
               }
             }
           ],
@@ -368,6 +404,21 @@
               "name": {
                 "value": "available"
               }
+            },
+            {
+              "name": {
+                "value": "on"
+              }
+            },
+            {
+              "name": {
+                "value": "open"
+              }
+            },
+            {
+              "name": {
+                "value": "live"
+              }
             }
           ],
           "name": "availableReferenceSlot"
@@ -412,6 +463,11 @@
             {
               "name": {
                 "value": "today"
+              }
+            },
+            {
+              "name": {
+                "value": "this week"
               }
             }
           ],

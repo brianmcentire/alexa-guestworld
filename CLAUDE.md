@@ -19,7 +19,11 @@ Alexa Skill ("Guest World Calendar") that tells Zwift users which virtual worlds
 - `NextWorldIntentHandler` — finds when worlds change next; calculates hours/minutes until midnight Halifax for next-day changes
 - `ZwiftTimeIntentHandler` — debug intent, returns current Halifax day number
 
-**Interaction models** (`interactionModels/custom/en-*.json`) — four locale variants (en-US, en-CA, en-AU, en-GB), identical structure. The `GuestWorldName` slot uses `AMAZON.AT_CITY` type with extensive synonyms for voice recognition of world names.
+**Interaction models** (`interactionModels/custom/en-*.json`) — four locale variants (en-US, en-CA, en-AU, en-GB), identical structure. The `GuestWorldName` slot uses `AMAZON.AT_CITY` type with extensive synonyms for voice recognition of world names. The `optionalWatopiaIntentTimeframeSlot` is used for utterance matching only — the handler doesn't read its value despite the Watopia-specific name.
+
+**Multi-turn sessions:** All success response paths use `.ask(" ")` (space as reprompt) to keep the session open for follow-up questions. Alexa listens briefly, then auto-closes silently if the user says nothing. Debug intents (ZwiftTime, IntentReflector) do not use multi-turn.
+
+**Utterance design:** Alexa NLU automatically normalizes contractions ("what's" → "what is"), so sample utterances use expanded forms. Cross-intent disambiguation relies on different temporal markers (optionalToday slots vs literal "tomorrow" vs AMAZON.DATE) and different slot types (GuestWorldName city names vs worldReference generic terms).
 
 **Shared scraper module** (`guest-world-scraper/scraper_core.py`) — pure functions for parsing schedule HTML using BeautifulSoup4:
 - `parse_calendar_html(html_content)` → `list[(day_number, [world_names])]`
@@ -52,7 +56,7 @@ User → Alexa → Lambda cold start reads CSV → worldList[day] → spoken res
 
 ## Supported Worlds
 
-Rotating: Paris, Yorkshire, Innsbruck, London, Richmond, Makuri Islands, New York
+Rotating: Paris, Yorkshire, Innsbruck, London, Richmond, Makuri Islands, New York, Scotland, France
 Always available: Watopia (not in CSV, hardcoded in WhenWorldIntentHandler)
 
 ## Key Files
