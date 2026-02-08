@@ -74,7 +74,7 @@ def _parse_amazon_date(date_str, now):
     last_day = calendar.monthrange(now.year, now.month)[1]
 
     # Weekend format: YYYY-Www-WE → Saturday + Sunday of that ISO week
-    m = re.match(r'^(\d{4})-W(\d{2})-WE$', date_str)
+    m = re.match(r'^(\d{4})-W(\d{1,2})-WE$', date_str)
     if m:
         year, week = int(m.group(1)), int(m.group(2))
         try:
@@ -87,6 +87,14 @@ def _parse_amazon_date(date_str, now):
             if d.year == now.year and d.month == now.month and 1 <= d.day <= last_day:
                 results.append((d.day, d))
         return results
+
+    # Recurring day-of-month: XXXX-XX-DD (e.g. "the twenty seventh")
+    m = re.match(r'^XXXX-XX-(\d{2})$', date_str)
+    if m:
+        d = int(m.group(1))
+        if 1 <= d <= last_day:
+            return [(d, now.replace(day=d))]
+        return []
 
     # Specific date: YYYY-MM-DD
     try:

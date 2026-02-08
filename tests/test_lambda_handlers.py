@@ -384,6 +384,24 @@ class TestParseAmazonDate:
         now = datetime(2025, 1, 10)
         assert lambda_function._parse_amazon_date("not-a-date", now) == []
 
+    def test_recurring_day_of_month(self):
+        now = datetime(2025, 1, 10)
+        result = lambda_function._parse_amazon_date("XXXX-XX-15", now)
+        assert result == [(15, datetime(2025, 1, 15))]
+
+    def test_recurring_day_out_of_range(self):
+        # February has 28 days, so day 31 is out of range
+        now = datetime(2025, 2, 10)
+        assert lambda_function._parse_amazon_date("XXXX-XX-31", now) == []
+
+    def test_weekend_single_digit_week(self):
+        # W7 (no leading zero) should parse the same as W07
+        now = datetime(2025, 2, 10)
+        result = lambda_function._parse_amazon_date("2025-W7-WE", now)
+        assert len(result) == 2
+        assert result[0][0] == 15  # Saturday Feb 15
+        assert result[1][0] == 16  # Sunday Feb 16
+
 
 # ---------------------------------------------------------------------------
 # WorldOnDateIntentHandler
@@ -507,6 +525,34 @@ class TestWorldOnDateIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "didn't catch" in spoken
+
+    def test_recurring_day_of_month(self, mock_handler_input, set_lambda_globals, world_list):
+        # "the 27th" → XXXX-XX-27 → day 27 = "paris"
+        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+        hi = mock_handler_input(intent_name="WorldOnDateIntent",
+                                date_slot_value="XXXX-XX-27")
+        handler = lambda_function.WorldOnDateIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "January the 27th" in spoken
+        assert "paris" in spoken
+
+    def test_weekend_single_digit_week(self, mock_handler_input, set_lambda_globals, world_list):
+        # "next weekend" → 2025-W2-WE (no leading zero) → Sat Jan 11, Sun Jan 12
+        set_lambda_globals(day=8, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 8, 12, 0, 0))
+        hi = mock_handler_input(intent_name="WorldOnDateIntent",
+                                date_slot_value="2025-W2-WE")
+        handler = lambda_function.WorldOnDateIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "Saturday" in spoken
+        assert "Sunday" in spoken
 
     def test_data_unavailable(self, mock_handler_input, set_lambda_globals):
         set_lambda_globals(day=10, lastDayOfMonth=31)
