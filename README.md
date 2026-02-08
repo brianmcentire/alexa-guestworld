@@ -13,6 +13,9 @@ Some of the questions (intents) this skill will answer are:
   * "Where can I ride today?"
   * "When can I run in London?"
   * "What guest world is next?"
+  * "Where can I ride next weekend?"
+  * "What map is available Tuesday?"
+  * "What can I ride on the 17th?"
   
 I developed this code to "scratch an itch" and decided to share it with Zwifters all over the world. It is available for free and is published in the Alexa Store:
   * https://www.amazon.com/B-Scott-Guest-World-Calendar/dp/B084ZVL2Y8/ref=sr_1_1?dchild=1&keywords=guest+world+calendar&qid=1615303648&s=digital-skills&sr=1-1#customerReviews
