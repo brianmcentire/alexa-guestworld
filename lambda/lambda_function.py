@@ -390,6 +390,8 @@ class AfterThatIntentHandler(AbstractRequestHandler):
             return handler_input.response_builder.speak(speak).ask(speak).response
 
         next_day = last_answered_day + 1
+        while next_day <= last_day and worldList[next_day] == worldList[last_answered_day]:
+            next_day += 1
 
         if next_day > last_day:
             speak = "I don't have next month's schedule yet."

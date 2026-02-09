@@ -574,16 +574,17 @@ class TestWorldOnDateIntentHandler:
 
 class TestAfterThatIntentHandler:
     def test_after_today(self, mock_handler_input, set_lambda_globals, world_list):
-        """Today → after that gives tomorrow's worlds."""
+        """Today → after that skips to next world change."""
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
                            nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
 
         # First ask about today to set session state
+        # Day 5 = "London and Yorkshire", day 6 = same, day 7 = "Richmond and London"
         hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
         lambda_function.TodaysWorldIntentHandler().handle(hi_today)
         assert hi_today.attributes_manager.session_attributes['last_answered_day'] == 5
 
-        # Now ask "after that" using the same session attributes
+        # "After that" skips day 6 (same worlds) → day 7
         hi = mock_handler_input(intent_name="AfterThatIntent")
         hi.attributes_manager.session_attributes = hi_today.attributes_manager.session_attributes
         handler = lambda_function.AfterThatIntentHandler()
@@ -592,35 +593,35 @@ class TestAfterThatIntentHandler:
         handler.handle(hi)
 
         spoken = hi.response_builder.speak.call_args[0][0]
-        assert world_list[6] in spoken
-        assert "January the 6th" in spoken
+        assert world_list[7] in spoken
+        assert "January the 7th" in spoken
 
     def test_chaining_multiple_days(self, mock_handler_input, set_lambda_globals, world_list):
-        """Chaining: today → after that → after that walks through days."""
+        """Chaining: today → after that → after that skips to each world change."""
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
                            nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
 
         handler = lambda_function.AfterThatIntentHandler()
 
-        # Start from today
+        # Start from today (day 5 = "London and Yorkshire")
         hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
         lambda_function.TodaysWorldIntentHandler().handle(hi_today)
         session = hi_today.attributes_manager.session_attributes
 
-        # First "after that" → day 6
+        # First "after that" → skips day 6 (same) → day 7 "Richmond and London"
         hi1 = mock_handler_input(intent_name="AfterThatIntent")
         hi1.attributes_manager.session_attributes = session
         handler.handle(hi1)
         spoken1 = hi1.response_builder.speak.call_args[0][0]
-        assert world_list[6] in spoken1
+        assert world_list[7] in spoken1
 
-        # Second "after that" → day 7
+        # Second "after that" → day 8 "Makuri Islands and New York"
         hi2 = mock_handler_input(intent_name="AfterThatIntent")
         hi2.attributes_manager.session_attributes = session
         handler.handle(hi2)
         spoken2 = hi2.response_builder.speak.call_args[0][0]
-        assert world_list[7] in spoken2
-        assert "January the 7th" in spoken2
+        assert world_list[8] in spoken2
+        assert "January the 8th" in spoken2
 
     def test_end_of_month(self, mock_handler_input, set_lambda_globals, world_list):
         """At end of month, responds with schedule unavailable message."""
@@ -666,20 +667,21 @@ class TestAfterThatIntentHandler:
         assert "January the 12th" in spoken
 
     def test_penultimate_day(self, mock_handler_input, set_lambda_globals, world_list):
-        """After that from day 30 of 31 gives day 31, then next hits end of month."""
-        set_lambda_globals(day=30, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 30, 12, 0, 0))
-        session = {'last_answered_day': 30}
+        """After that from day 28 skips to day 30, then next hits end of month."""
+        set_lambda_globals(day=28, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 28, 12, 0, 0))
+        # Day 28-29 = "Makuri Islands and New York", day 30-31 = "New York and Richmond"
+        session = {'last_answered_day': 28}
         handler = lambda_function.AfterThatIntentHandler()
 
-        # Day 30 → day 31 (works)
+        # Day 28 → skips day 29 (same) → day 30 (works)
         hi1 = mock_handler_input(intent_name="AfterThatIntent")
         hi1.attributes_manager.session_attributes = session
         handler.handle(hi1)
         spoken1 = hi1.response_builder.speak.call_args[0][0]
-        assert world_list[31] in spoken1
+        assert world_list[30] in spoken1
 
-        # Day 31 → day 32 (end of month)
+        # Day 30 → skips day 31 (same) → day 32 (end of month)
         hi2 = mock_handler_input(intent_name="AfterThatIntent")
         hi2.attributes_manager.session_attributes = session
         handler.handle(hi2)
