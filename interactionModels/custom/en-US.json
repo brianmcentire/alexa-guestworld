@@ -47,7 +47,9 @@
             "what {worldReference} can i {Activity} in today",
             "what {worldReference} is currently {availableReference}",
             "what {worldReference} is {availableReference} {optionalToday}",
-            "where can I {Activity} {optionalToday}",
+            "where can I {Activity}",
+            "where can I {Activity} today",
+            "where can I {Activity} now",
             "what is {availableReference}",
             "what is today\u0027s {worldReference}",
             "what is the current {worldReference}",
@@ -55,7 +57,9 @@
             "which {worldReference} can I {Activity} in {optionalToday}",
             "tell me the {worldReference} {optionalToday}",
             "tell me what is {availableReference} {optionalToday}",
-            "what can I {Activity} {optionalToday}"
+            "what can I {Activity}",
+            "what can I {Activity} today",
+            "what can I {Activity} now"
           ]
         },
         {
@@ -498,5 +502,5 @@
       ]
     }
   },
-  "version": "81"
+  "version": "82"
 }
