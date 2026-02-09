@@ -135,7 +135,7 @@ class TestWhenWorldIntentHandler:
     def test_world_available_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 1 = paris, Yorkshire first appears on day 3 → 2 days away
         set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 1, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 1, 12, 0, 0))
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -189,7 +189,7 @@ class TestNextWorldIntentHandler:
         # Day 1 and day 2 are both "paris", so set day=2 where day 3 differs
         set_lambda_globals(
             day=2, lastDayOfMonth=31, worldList=world_list,
-            nowInHalifax=now, midnightInHalifax=midnight,
+            nowInEastern=now, midnightInEastern=midnight,
         )
         hi = mock_handler_input(intent_name="NextWorldIntent")
         handler = lambda_function.NextWorldIntentHandler()
@@ -254,7 +254,7 @@ class TestZwiftTimeIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "17" in spoken
-        assert "Halifax" in spoken
+        assert "Eastern" in spoken
 
     def test_uses_fresh_time(self, mock_handler_input, set_lambda_globals):
         # First call with day=10, second with day=25 — verify it picks up the change
@@ -412,7 +412,7 @@ class TestWorldOnDateIntentHandler:
     def test_future_date(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 10, ask about the 15th — "London and Yorkshire"
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-01-15")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -427,7 +427,7 @@ class TestWorldOnDateIntentHandler:
     def test_today(self, mock_handler_input, set_lambda_globals, world_list):
         # Ask about today (day 5) — "London and Yorkshire"
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-01-05")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -441,7 +441,7 @@ class TestWorldOnDateIntentHandler:
     def test_past_date(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 10, ask about the 3rd — past
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-01-03")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -462,7 +462,7 @@ class TestWorldOnDateIntentHandler:
         custom = list(world_list)
         custom[11] = custom[12]  # Make Sat/Sun of week 2 the same
         set_lambda_globals(day=8, lastDayOfMonth=31, worldList=custom,
-                           nowInHalifax=datetime(2025, 1, 8, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 8, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-W02-WE")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -477,7 +477,7 @@ class TestWorldOnDateIntentHandler:
         # Week 1 of 2025: Sat=Jan 4, Sun=Jan 5
         # Day 4 = "Yorkshire and Innsbruck", day 5 = "London and Yorkshire" → different
         set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 1, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 1, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-W01-WE")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -493,7 +493,7 @@ class TestWorldOnDateIntentHandler:
     def test_weekend_on_sunday(self, mock_handler_input, set_lambda_globals, world_list):
         # Today is Sunday Jan 5, ask "this weekend" → Sat Jan 4 is past, only Sun Jan 5
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-W01-WE")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -507,7 +507,7 @@ class TestWorldOnDateIntentHandler:
 
     def test_next_month_date(self, mock_handler_input, set_lambda_globals, world_list):
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-02-15")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -530,7 +530,7 @@ class TestWorldOnDateIntentHandler:
     def test_recurring_day_of_month(self, mock_handler_input, set_lambda_globals, world_list):
         # "the 27th" → XXXX-XX-27 → day 27 = "paris"
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="XXXX-XX-27")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -544,7 +544,7 @@ class TestWorldOnDateIntentHandler:
     def test_weekend_single_digit_week(self, mock_handler_input, set_lambda_globals, world_list):
         # "next weekend" → 2025-W2-WE (no leading zero) → Sat Jan 11, Sun Jan 12
         set_lambda_globals(day=8, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 8, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 8, 12, 0, 0))
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-W2-WE")
         handler = lambda_function.WorldOnDateIntentHandler()
@@ -576,7 +576,7 @@ class TestAfterThatIntentHandler:
     def test_after_today(self, mock_handler_input, set_lambda_globals, world_list):
         """Today → after that skips to next world change."""
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
 
         # First ask about today to set session state
         # Day 5 = "London and Yorkshire", day 6 = same, day 7 = "Richmond and London"
@@ -599,7 +599,7 @@ class TestAfterThatIntentHandler:
     def test_chaining_multiple_days(self, mock_handler_input, set_lambda_globals, world_list):
         """Chaining: today → after that → after that skips to each world change."""
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
 
         handler = lambda_function.AfterThatIntentHandler()
 
@@ -626,7 +626,7 @@ class TestAfterThatIntentHandler:
     def test_end_of_month(self, mock_handler_input, set_lambda_globals, world_list):
         """At end of month, responds with schedule unavailable message."""
         set_lambda_globals(day=31, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 31, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 31, 12, 0, 0))
         hi = mock_handler_input(intent_name="AfterThatIntent")
         hi.attributes_manager.session_attributes = {'last_answered_day': 31}
         handler = lambda_function.AfterThatIntentHandler()
@@ -650,7 +650,7 @@ class TestAfterThatIntentHandler:
     def test_after_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
         """Tomorrow → after that gives the day after tomorrow's worlds."""
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
 
         # Ask about tomorrow
         hi_tmrw = mock_handler_input(intent_name="TomorrowsWorldIntent")
@@ -669,7 +669,7 @@ class TestAfterThatIntentHandler:
     def test_penultimate_day(self, mock_handler_input, set_lambda_globals, world_list):
         """After that from day 28 skips to day 30, then next hits end of month."""
         set_lambda_globals(day=28, lastDayOfMonth=31, worldList=world_list,
-                           nowInHalifax=datetime(2025, 1, 28, 12, 0, 0))
+                           nowInEastern=datetime(2025, 1, 28, 12, 0, 0))
         # Day 28-29 = "Makuri Islands and New York", day 30-31 = "New York and Richmond"
         session = {'last_answered_day': 28}
         handler = lambda_function.AfterThatIntentHandler()

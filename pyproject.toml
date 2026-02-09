@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not e2e'"
 markers = [
     "integration: tests that hit real AWS and external services (deselected by default)",
+    "e2e: end-to-end tests using ASK CLI dialog replay (deselected by default)",
 ]

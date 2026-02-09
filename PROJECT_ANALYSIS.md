@@ -30,8 +30,8 @@ The project spans two AWS accounts:
 2. **AWS Lambda Function** (`lambda/lambda_function.py`)
    - Python-based handler using Alexa Skills Kit SDK
    - Runs in the Alexa-managed account; reads calendar data from S3 cross-account
-   - Uses Halifax timezone (America/Halifax, UTC-4) for day calculations
-   - World changes happen at midnight Halifax time (8pm Los Angeles time)
+   - Uses Eastern timezone (America/New_York) for day calculations
+   - World changes happen at midnight Eastern time (9pm Pacific)
 
 3. **Data Storage**
    - S3 bucket: `guestworldskill` (infrastructure account)
@@ -119,8 +119,8 @@ Makuri Islands and New York,8
    - String replacement logic may not work correctly with current format
 
 4. **Timezone complexity**
-   - Uses Halifax timezone for calculations
-   - Edge cases when Halifax is on day 1 but local time is still on last day of previous month
+   - Uses Eastern timezone for calculations
+   - Edge cases when Eastern is on day 1 but UTC time is still on last day of previous month
 
 5. **Limited error handling**
    - Generic error message for all failures

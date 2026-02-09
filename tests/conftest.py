@@ -111,11 +111,11 @@ def set_lambda_globals():
     patchers = []
 
     def _set(day=1, lastDayOfMonth=31, worldList=None,
-             nowInHalifax=None, midnightInHalifax=None):
+             nowInEastern=None, midnightInEastern=None):
         if worldList is not None:
             lambda_function.worldList = worldList
-        now = nowInHalifax or datetime(2025, 1, day, 12, 0, 0)
-        midnight = midnightInHalifax or (now + timedelta(days=1)).replace(
+        now = nowInEastern or datetime(2025, 1, day, 12, 0, 0)
+        midnight = midnightInEastern or (now + timedelta(days=1)).replace(
             hour=0, minute=0, second=0)
         patcher = patch.object(
             lambda_function, '_get_time_state',

@@ -10,14 +10,14 @@ Alexa Skill ("Guest World Calendar") that tells Zwift users which virtual worlds
 
 **Lambda function** (`lambda/lambda_function.py`) — Python 3, uses `ask-sdk-core`. All state is initialized at module level (Lambda cold start): reads a CSV from S3 bucket `guestworldskill` into a `worldList` array indexed by day-of-month. Intent handlers reference these globals.
 
-**Key timezone detail:** Zwift's guest world changeover happens at 8 PM Los Angeles time, which is midnight in Halifax (UTC-4). All day calculations use `America/Halifax` timezone.
+**Key timezone detail:** Zwift's guest world changeover happens at midnight Eastern time (9 PM Pacific). All day calculations use `America/New_York` timezone.
 
 **Intent handlers** (registered in order, IntentReflectorHandler must be last):
 - `TodaysWorldIntentHandler` — returns `worldList[dayNumber]`
 - `TomorrowsWorldIntentHandler` — returns next day's worlds, with end-of-month edge case
 - `WhenWorldIntentHandler` — searches forward in `worldList` for a named world; uses case-insensitive, space-stripped matching. Watopia is always available (hardcoded special case)
-- `NextWorldIntentHandler` — finds when worlds change next; calculates hours/minutes until midnight Halifax for next-day changes
-- `ZwiftTimeIntentHandler` — debug intent, returns current Halifax day number
+- `NextWorldIntentHandler` — finds when worlds change next; calculates hours/minutes until midnight Eastern for next-day changes
+- `ZwiftTimeIntentHandler` — debug intent, returns current Eastern time day number
 
 **Interaction models** (`interactionModels/custom/en-*.json`) — four locale variants (en-US, en-CA, en-AU, en-GB), identical structure. The `GuestWorldName` slot uses `AMAZON.AT_CITY` type with extensive synonyms for voice recognition of world names. The `optionalWatopiaIntentTimeframeSlot` is used for utterance matching only — the handler doesn't read its value despite the Watopia-specific name.
 
@@ -74,7 +74,7 @@ Always available: Watopia (not in CSV, hardcoded in WhenWorldIntentHandler)
 ## Known Edge Cases
 
 - End-of-month: Alexa Lambda doesn't know next month's schedule until scraper updates S3
-- `lastDayOfMonth` uses `datetime.now()` (system time) while day calculations use Halifax time — potential mismatch around midnight UTC
+- `lastDayOfMonth` uses `datetime.now()` (system time) while day calculations use Eastern time — potential mismatch around midnight UTC
 
 ## Configuration
 

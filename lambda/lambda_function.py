@@ -30,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 def _get_time_state():
     """Return fresh (now, day, midnight, last_day) for the current invocation."""
-    now = datetime.now(tz.gettz('America/Halifax'))
+    now = datetime.now(tz.gettz('America/New_York'))
     day = now.day
     midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0)
     last_day = calendar.monthrange(now.year, now.month)[1]
@@ -419,7 +419,7 @@ class ZwiftTimeIntentHandler(AbstractRequestHandler):
         # type: (HandlerInput) -> Response
         logger.info("Handling ZwiftTimeIntent")
         now, day, midnight, last_day = _get_time_state()
-        speak_output = "In Halifax, the day is " + str(day)
+        speak_output = "In Eastern time, the day is " + str(day)
 
         return (
             handler_input.response_builder
