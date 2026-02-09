@@ -182,7 +182,10 @@
             "what is {availableReference} {requestedDate}",
             "which {worldReference} are {availableReference} on {requestedDate}",
             "which {worldReference} can I {Activity} on {requestedDate}",
-            "tell me what is {availableReference} on {requestedDate}"
+            "tell me what is {availableReference} on {requestedDate}",
+            "on {requestedDate} what can I {Activity}",
+            "on {requestedDate} where can I {Activity}",
+            "on {requestedDate} what {worldReference} are {availableReference}"
           ]
         },
         {
@@ -340,7 +343,6 @@
               "name": {
                 "value": "ride",
                 "synonyms": [
-                  "ride on",
                   "mountain bike",
                   "cycle",
                   "bike"
@@ -496,5 +498,5 @@
       ]
     }
   },
-  "version": "80"
+  "version": "81"
 }
