@@ -1,6 +1,7 @@
 """Tests for all intent handlers in lambda_function.py."""
 
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock
 
 import lambda_function
 
@@ -560,6 +561,137 @@ class TestWorldOnDateIntentHandler:
         hi = mock_handler_input(intent_name="WorldOnDateIntent",
                                 date_slot_value="2025-01-15")
         handler = lambda_function.WorldOnDateIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "temporarily unavailable" in spoken
+
+
+# ---------------------------------------------------------------------------
+# AfterThatIntentHandler
+# ---------------------------------------------------------------------------
+
+class TestAfterThatIntentHandler:
+    def test_after_today(self, mock_handler_input, set_lambda_globals, world_list):
+        """Today → after that gives tomorrow's worlds."""
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+
+        # First ask about today to set session state
+        hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
+        lambda_function.TodaysWorldIntentHandler().handle(hi_today)
+        assert hi_today.attributes_manager.session_attributes['last_answered_day'] == 5
+
+        # Now ask "after that" using the same session attributes
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        hi.attributes_manager.session_attributes = hi_today.attributes_manager.session_attributes
+        handler = lambda_function.AfterThatIntentHandler()
+
+        assert handler.can_handle(hi)
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert world_list[6] in spoken
+        assert "January the 6th" in spoken
+
+    def test_chaining_multiple_days(self, mock_handler_input, set_lambda_globals, world_list):
+        """Chaining: today → after that → after that walks through days."""
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 5, 12, 0, 0))
+
+        handler = lambda_function.AfterThatIntentHandler()
+
+        # Start from today
+        hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
+        lambda_function.TodaysWorldIntentHandler().handle(hi_today)
+        session = hi_today.attributes_manager.session_attributes
+
+        # First "after that" → day 6
+        hi1 = mock_handler_input(intent_name="AfterThatIntent")
+        hi1.attributes_manager.session_attributes = session
+        handler.handle(hi1)
+        spoken1 = hi1.response_builder.speak.call_args[0][0]
+        assert world_list[6] in spoken1
+
+        # Second "after that" → day 7
+        hi2 = mock_handler_input(intent_name="AfterThatIntent")
+        hi2.attributes_manager.session_attributes = session
+        handler.handle(hi2)
+        spoken2 = hi2.response_builder.speak.call_args[0][0]
+        assert world_list[7] in spoken2
+        assert "January the 7th" in spoken2
+
+    def test_end_of_month(self, mock_handler_input, set_lambda_globals, world_list):
+        """At end of month, responds with schedule unavailable message."""
+        set_lambda_globals(day=31, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 31, 12, 0, 0))
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        hi.attributes_manager.session_attributes = {'last_answered_day': 31}
+        handler = lambda_function.AfterThatIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "don't have next month's schedule" in spoken
+
+    def test_no_previous_context(self, mock_handler_input, set_lambda_globals, world_list):
+        """Without prior day context, prompts user to ask about a day first."""
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        handler = lambda_function.AfterThatIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "After what?" in spoken
+
+    def test_after_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
+        """Tomorrow → after that gives the day after tomorrow's worlds."""
+        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 10, 12, 0, 0))
+
+        # Ask about tomorrow
+        hi_tmrw = mock_handler_input(intent_name="TomorrowsWorldIntent")
+        lambda_function.TomorrowsWorldIntentHandler().handle(hi_tmrw)
+        assert hi_tmrw.attributes_manager.session_attributes['last_answered_day'] == 11
+
+        # Now "after that" → day 12
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        hi.attributes_manager.session_attributes = hi_tmrw.attributes_manager.session_attributes
+        lambda_function.AfterThatIntentHandler().handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert world_list[12] in spoken
+        assert "January the 12th" in spoken
+
+    def test_penultimate_day(self, mock_handler_input, set_lambda_globals, world_list):
+        """After that from day 30 of 31 gives day 31, then next hits end of month."""
+        set_lambda_globals(day=30, lastDayOfMonth=31, worldList=world_list,
+                           nowInHalifax=datetime(2025, 1, 30, 12, 0, 0))
+        session = {'last_answered_day': 30}
+        handler = lambda_function.AfterThatIntentHandler()
+
+        # Day 30 → day 31 (works)
+        hi1 = mock_handler_input(intent_name="AfterThatIntent")
+        hi1.attributes_manager.session_attributes = session
+        handler.handle(hi1)
+        spoken1 = hi1.response_builder.speak.call_args[0][0]
+        assert world_list[31] in spoken1
+
+        # Day 31 → day 32 (end of month)
+        hi2 = mock_handler_input(intent_name="AfterThatIntent")
+        hi2.attributes_manager.session_attributes = session
+        handler.handle(hi2)
+        spoken2 = hi2.response_builder.speak.call_args[0][0]
+        assert "don't have next month's schedule" in spoken2
+
+    def test_data_unavailable(self, mock_handler_input, set_lambda_globals):
+        set_lambda_globals(day=5, lastDayOfMonth=31)
+        lambda_function.worldList = None
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        hi.attributes_manager.session_attributes = {'last_answered_day': 5}
+        handler = lambda_function.AfterThatIntentHandler()
 
         handler.handle(hi)
 

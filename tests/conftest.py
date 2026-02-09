@@ -187,6 +187,9 @@ def mock_handler_input():
             request_obj = IntentRequest(intent=intent_obj)
             hi.request_envelope.request = request_obj
 
+        # session attributes as a real dict so handlers can read/write keys
+        hi.attributes_manager.session_attributes = {}
+
         # response_builder with fluent chain
         response_obj = MagicMock(name="response")
         builder = MagicMock()

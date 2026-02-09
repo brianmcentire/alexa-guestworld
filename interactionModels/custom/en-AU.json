@@ -184,6 +184,26 @@
             "which {worldReference} can I {Activity} on {requestedDate}",
             "tell me what is {availableReference} on {requestedDate}"
           ]
+        },
+        {
+          "name": "AfterThatIntent",
+          "slots": [],
+          "samples": [
+            "and after that",
+            "after that",
+            "and then",
+            "then what",
+            "and then what",
+            "what about the day after",
+            "what about the day after that",
+            "the next day",
+            "the day after that",
+            "the day after",
+            "continue",
+            "go on",
+            "keep going",
+            "what comes after that"
+          ]
         }
       ],
       "types": [
@@ -476,5 +496,5 @@
       ]
     }
   },
-  "version": "8"
+  "version": "80"
 }

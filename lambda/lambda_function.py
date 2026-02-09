@@ -175,6 +175,9 @@ class TodaysWorldIntentHandler(AbstractRequestHandler):
 
         speak_output = "Todays Guest Worlds are " + worldList[day]
 
+        session_attr = handler_input.attributes_manager.session_attributes
+        session_attr['last_answered_day'] = day
+
         return (
             handler_input.response_builder
                 .speak(speak_output)
@@ -197,8 +200,11 @@ class TomorrowsWorldIntentHandler(AbstractRequestHandler):
             return error
         now, day, midnight, last_day = _get_time_state()
 
+        session_attr = handler_input.attributes_manager.session_attributes
+
         if day < last_day:
             speak_output = "Tomorrow's Guest Worlds are " + worldList[day + 1]
+            session_attr['last_answered_day'] = day + 1
         else:
             speak_output = "I don't know next month's schedule yet. " + worldList[day] + " are available today. Ask me again tomorrow."
 
@@ -306,16 +312,19 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
 
         # Filter to only future/today dates
         dates = future
+        session_attr = handler_input.attributes_manager.session_attributes
 
         if len(dates) == 1:
             # Single date
             d, dt = dates[0]
+            session_attr['last_answered_day'] = d
             speak = "On " + _ordinal_date_string(dt) + ", the guest worlds will be " + worldList[d] + "."
             return handler_input.response_builder.speak(speak).ask(" ").response
 
         # Weekend (2 dates)
         d1, dt1 = dates[0]
         d2, dt2 = dates[1]
+        session_attr['last_answered_day'] = d2
 
         if worldList[d1] == worldList[d2]:
             # Same worlds both days
@@ -359,6 +368,43 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
                 speak = ("On Saturday, the guest worlds will be " + worldList[d1]
                          + ". On Sunday, they will be " + worldList[d2] + ".")
             return handler_input.response_builder.speak(speak).ask(" ").response
+
+
+class AfterThatIntentHandler(AbstractRequestHandler):
+    """Handler for After That Intent — answers 'and after that?' follow-ups."""
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("AfterThatIntent")(handler_input)
+
+    def handle(self, handler_input):
+        logger.info("Handling AfterThatIntent")
+        error = _data_unavailable_response(handler_input)
+        if error:
+            return error
+        now, day, midnight, last_day = _get_time_state()
+
+        session_attr = handler_input.attributes_manager.session_attributes
+        last_answered_day = session_attr.get('last_answered_day')
+
+        if last_answered_day is None:
+            speak = "After what? Try asking what worlds are available today first."
+            return handler_input.response_builder.speak(speak).ask(speak).response
+
+        next_day = last_answered_day + 1
+
+        if next_day > last_day:
+            speak = "I don't have next month's schedule yet."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        session_attr['last_answered_day'] = next_day
+        speak = ("On " + _ordinal_date_string(now.replace(day=next_day))
+                 + ", the guest worlds will be " + worldList[next_day] + ".")
+
+        return (
+            handler_input.response_builder
+                .speak(speak)
+                .ask(" ")
+                .response
+        )
 
 
 class ZwiftTimeIntentHandler(AbstractRequestHandler):
@@ -529,6 +575,7 @@ sb.add_request_handler(TodaysWorldIntentHandler())
 sb.add_request_handler(TomorrowsWorldIntentHandler())
 sb.add_request_handler(WhenWorldIntentHandler())
 sb.add_request_handler(WorldOnDateIntentHandler())
+sb.add_request_handler(AfterThatIntentHandler())
 sb.add_request_handler(ZwiftTimeIntentHandler())
 sb.add_request_handler(NextWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
