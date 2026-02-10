@@ -59,7 +59,8 @@
             "tell me what is {availableReference} {optionalToday}",
             "what can I {Activity}",
             "what can I {Activity} today",
-            "what can I {Activity} now"
+            "what can I {Activity} now",
+            "what is up"
           ]
         },
         {
@@ -502,5 +503,5 @@
       ]
     }
   },
-  "version": "82"
+  "version": "83"
 }
