@@ -109,6 +109,7 @@ class TestWhenWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "Watopia" in spoken
         assert "every day" in spoken
+        assert 'last_answered_day' not in hi.attributes_manager.session_attributes
 
     def test_world_available_today(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 3 has "Yorkshire and Innsbruck"
@@ -120,6 +121,7 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available now" in spoken
+        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
 
     def test_world_available_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 2 has "paris", day 3 has "Yorkshire and Innsbruck"
@@ -131,6 +133,7 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available tomorrow" in spoken
+        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
 
     def test_world_available_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 1 = paris, Yorkshire first appears on day 3 → 2 days away
@@ -144,6 +147,7 @@ class TestWhenWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "in 2 days" in spoken
         assert "January the 3rd" in spoken
+        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
 
     def test_world_not_found_this_month(self, mock_handler_input, set_lambda_globals, world_list):
         # Ask for London starting from day 28 — London doesn't appear after day 24
@@ -155,6 +159,7 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "next month" in spoken
+        assert 'last_answered_day' not in hi.attributes_manager.session_attributes
 
     def test_case_insensitive_match(self, mock_handler_input, set_lambda_globals, world_list):
         # "new york" should match "New York and Richmond" on day 10

@@ -263,6 +263,10 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
                 speak_output += (" will be available in " + str(lookupDay - day)
                                  + " days on " + _ordinal_date_string(now.replace(day=lookupDay)) + ".")
 
+            if lookupDay <= last_day:
+                session_attr = handler_input.attributes_manager.session_attributes
+                session_attr['last_answered_day'] = lookupDay
+
 
         return (
             handler_input.response_builder
