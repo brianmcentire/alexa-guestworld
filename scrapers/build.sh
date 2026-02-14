@@ -14,9 +14,11 @@ mkdir -p "$PKG_DIR"
 # Install dependencies
 pip install -r "$SCRIPT_DIR/requirements.txt" -t "$PKG_DIR" --quiet
 
-# Copy handler and shared module
-cp "$SCRIPT_DIR/scraper_handler.py" "$PKG_DIR/"
-cp "$SCRIPT_DIR/../guest-world-scraper/scraper_core.py" "$PKG_DIR/"
+# Copy handlers and core modules
+cp "$SCRIPT_DIR/guestworld_scraper_handler.py" "$PKG_DIR/"
+cp "$SCRIPT_DIR/guestworld_scraper_core.py" "$PKG_DIR/"
+cp "$SCRIPT_DIR/challenge_scraper_handler.py" "$PKG_DIR/"
+cp "$SCRIPT_DIR/challenge_scraper_core.py" "$PKG_DIR/"
 
 # Create zip
 cd "$PKG_DIR"

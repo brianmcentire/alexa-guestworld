@@ -3,15 +3,15 @@
 Reads the schedule URL from SSM, scrapes the calendar, and writes
 GuestWorlds.csv (+ monthly archive) to S3.
 
-Lambda config: handler = scraper_handler.lambda_handler
+Lambda config: handler = guestworld_scraper_handler.lambda_handler
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import boto3
 import requests
 
-from scraper_core import parse_calendar_html, format_csv
+from guestworld_scraper_core import parse_calendar_html, format_csv
 
 S3_BUCKET = "guestworldskill"
 
@@ -31,10 +31,9 @@ def lambda_handler(event, context):
 
     csv_content = format_csv(days)
 
-    # Calculate archive key — the CSV is for *next* month
+    # Calculate archive key — named for the current month being scraped
     now = datetime.utcnow()
-    next_month = now.replace(day=1) + timedelta(days=32)
-    archive_suffix = next_month.strftime("%Y%m")
+    archive_suffix = now.strftime("%Y%m")
 
     # Write to S3
     s3 = boto3.client("s3")

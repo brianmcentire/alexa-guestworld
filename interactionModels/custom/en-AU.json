@@ -194,6 +194,56 @@
           ]
         },
         {
+          "name": "WeeklyChallengeIntent",
+          "slots": [
+            {
+              "name": "challengeType",
+              "type": "challengeTypeSlot"
+            },
+            {
+              "name": "challengeDetail",
+              "type": "challengeDetailSlot"
+            },
+            {
+              "name": "challengeTimeframe",
+              "type": "challengeTimeframeSlot"
+            }
+          ],
+          "samples": [
+            "what is the {challengeType}",
+            "what is the {challengeType} {challengeTimeframe}",
+            "what are the {challengeType}",
+            "what are the {challengeType} {challengeTimeframe}",
+            "tell me about the {challengeType}",
+            "tell me about the {challengeType} {challengeTimeframe}",
+            "tell me the {challengeType}",
+            "tell me the {challengeType} {challengeTimeframe}",
+            "{challengeTimeframe} what is the {challengeType}",
+            "{challengeTimeframe} what are the {challengeType}",
+            "what is {challengeTimeframe} {challengeType}",
+            "what are {challengeTimeframe} {challengeType}",
+            "how {challengeDetail} is the {challengeType}",
+            "how {challengeDetail} is the {challengeType} {challengeTimeframe}",
+            "how many {challengeDetail} is the {challengeType}",
+            "how many {challengeDetail} is the {challengeType} {challengeTimeframe}",
+            "how many {challengeDetail} for the {challengeType}",
+            "how many {challengeDetail} for the {challengeType} {challengeTimeframe}",
+            "how many {challengeDetail} does the {challengeType} give",
+            "how much {challengeDetail} is the {challengeType}",
+            "how much {challengeDetail} does the {challengeType} have",
+            "how much {challengeDetail} for the {challengeType}",
+            "what is the {challengeDetail} of the {challengeType}",
+            "what is the {challengeDetail} of the {challengeType} {challengeTimeframe}",
+            "what is the {challengeDetail} for the {challengeType}",
+            "when does the {challengeType} change",
+            "when do the {challengeType} change",
+            "how long until the {challengeType} changes",
+            "what are the weekly challenges",
+            "what are the weekly challenges {challengeTimeframe}",
+            "tell me about the weekly challenges"
+          ]
+        },
+        {
           "name": "AfterThatIntent",
           "slots": [],
           "samples": [
@@ -209,8 +259,7 @@
             "continue",
             "go on",
             "keep going",
-            "what comes after that",
-            "what is after that"
+            "what comes after that"
           ]
         }
       ],
@@ -499,9 +548,128 @@
             }
           ],
           "name": "optionalWatopiaIntentTimeframeSlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "route of the week",
+                "synonyms": [
+                  "weekly route",
+                  "route challenge",
+                  "featured route",
+                  "R O T W"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "climb of the week",
+                "synonyms": [
+                  "weekly climb",
+                  "climb challenge",
+                  "featured climb",
+                  "C O T W",
+                  "climb portal challenge"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "challenge routes",
+                "synonyms": [
+                  "weekly challenges",
+                  "challenges",
+                  "weekly challenge",
+                  "weekly challenge routes"
+                ]
+              }
+            }
+          ],
+          "name": "challengeTypeSlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "XP",
+                "synonyms": [
+                  "experience points",
+                  "X P",
+                  "bonus XP",
+                  "bonus",
+                  "bonus points"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "distance",
+                "synonyms": [
+                  "length",
+                  "long",
+                  "far"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "elevation",
+                "synonyms": [
+                  "elevation gain",
+                  "climbing",
+                  "hilly"
+                ]
+              }
+            }
+          ],
+          "name": "challengeDetailSlot"
+        },
+        {
+          "values": [
+            {
+              "name": {
+                "value": "this week",
+                "synonyms": [
+                  "currently",
+                  "right now",
+                  "today",
+                  "this weeks"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "next week",
+                "synonyms": [
+                  "upcoming",
+                  "after this week",
+                  "next weeks"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "this month",
+                "synonyms": [
+                  "rest of the month",
+                  "remaining this month"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "next month",
+                "synonyms": [
+                  "upcoming month"
+                ]
+              }
+            }
+          ],
+          "name": "challengeTimeframeSlot"
         }
       ]
     }
   },
-  "version": "83"
+  "version": "86"
 }

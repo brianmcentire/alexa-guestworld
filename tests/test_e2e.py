@@ -347,3 +347,72 @@ class TestCrossIntentSession:
         assert "todays guest worlds are" in responses[0].lower()
         assert "tomorrow" in responses[1].lower() or "don't know" in responses[1].lower()
         assert "london" in responses[3].lower()
+
+
+# ---------------------------------------------------------------------------
+# WeeklyChallengeIntent
+# ---------------------------------------------------------------------------
+
+
+@skip_no_ask
+class TestWeeklyChallengeIntent:
+    """Weekly challenge queries must route to WeeklyChallengeIntent."""
+
+    def test_what_is_route_of_the_week(self, locale):
+        responses = run_dialog(locale, [
+            "ask which world what is the route of the week"
+        ])
+        assert len(responses) >= 1
+        r = responses[0].lower()
+        assert "route" in r
+        _assert_no_errors(r)
+
+    def test_what_is_climb_of_the_week(self, locale):
+        responses = run_dialog(locale, [
+            "ask which world what is the climb of the week"
+        ])
+        assert len(responses) >= 1
+        r = responses[0].lower()
+        assert "climb" in r
+        _assert_no_errors(r)
+
+    def test_weekly_challenges(self, locale):
+        responses = run_dialog(locale, [
+            "ask which world what are the weekly challenges"
+        ])
+        assert len(responses) >= 1
+        r = responses[0].lower()
+        assert "route" in r or "climb" in r
+        _assert_no_errors(r)
+
+    def test_how_long_is_route(self, locale):
+        responses = run_dialog(locale, [
+            "ask which world how long is the route of the week"
+        ])
+        assert len(responses) >= 1
+        r = responses[0].lower()
+        assert "mile" in r or "kilometer" in r or "don't have" in r
+        _assert_no_errors(r)
+
+    def test_next_weeks_route(self, locale):
+        responses = run_dialog(locale, [
+            "ask which world what is next weeks route of the week"
+        ])
+        assert len(responses) >= 1
+        r = responses[0].lower()
+        assert "route" in r or "next week" in r
+        _assert_no_errors(r)
+
+    def test_challenge_then_after_that(self, locale):
+        """Challenge route query followed by 'after that' should advance week."""
+        responses = run_dialog(locale, [
+            "ask which world what is the route of the week",
+            "and after that",
+        ])
+        assert len(responses) >= 2
+        r0 = responses[0].lower()
+        assert "route" in r0
+        _assert_no_errors(r0)
+        r1 = responses[1].lower()
+        assert "route" in r1 or "following week" in r1
+        assert "after what" not in r1

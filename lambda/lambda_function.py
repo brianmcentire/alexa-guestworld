@@ -4,6 +4,7 @@
 # Please visit https://alexa.design/cookbook for additional examples on implementing slots, dialog management,
 # session persistence, api calls, and more.
 # This sample is built using the handler classes approach in skill builder.
+import json
 import logging
 import re
 import ask_sdk_core.utils as ask_utils
@@ -136,6 +137,26 @@ def _load_world_list():
 _load_world_list()
 
 
+challengeData = None
+
+
+def _load_challenge_data():
+    """Read weekly challenge data from S3 JSON."""
+    global challengeData
+    try:
+        s3 = boto3.resource('s3')
+        obj = s3.Bucket('guestworldskill').Object('WeeklyChallenges.json')
+        response = obj.get()
+        challengeData = json.loads(response['Body'].read().decode('utf-8'))
+        logger.info("Loaded challenge data from S3")
+    except Exception:
+        logger.error("Failed to load challenge data from S3", exc_info=True)
+        challengeData = None
+
+
+_load_challenge_data()
+
+
 # ---------------------------------------------------------------------------
 # Intent handlers
 # ---------------------------------------------------------------------------
@@ -177,6 +198,7 @@ class TodaysWorldIntentHandler(AbstractRequestHandler):
 
         session_attr = handler_input.attributes_manager.session_attributes
         session_attr['last_answered_day'] = day
+        session_attr['last_context'] = 'world'
 
         return (
             handler_input.response_builder
@@ -205,6 +227,7 @@ class TomorrowsWorldIntentHandler(AbstractRequestHandler):
         if day < last_day:
             speak_output = "Tomorrow's Guest Worlds are " + worldList[day + 1]
             session_attr['last_answered_day'] = day + 1
+            session_attr['last_context'] = 'world'
         else:
             speak_output = "I don't know next month's schedule yet. " + worldList[day] + " are available today. Ask me again tomorrow."
 
@@ -266,6 +289,7 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
             if lookupDay <= last_day:
                 session_attr = handler_input.attributes_manager.session_attributes
                 session_attr['last_answered_day'] = lookupDay
+                session_attr['last_context'] = 'world'
 
 
         return (
@@ -322,6 +346,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             # Single date
             d, dt = dates[0]
             session_attr['last_answered_day'] = d
+            session_attr['last_context'] = 'world'
             speak = "On " + _ordinal_date_string(dt) + ", the guest worlds will be " + worldList[d] + "."
             return handler_input.response_builder.speak(speak).ask(" ").response
 
@@ -329,6 +354,7 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
         d1, dt1 = dates[0]
         d2, dt2 = dates[1]
         session_attr['last_answered_day'] = d2
+        session_attr['last_context'] = 'world'
 
         if worldList[d1] == worldList[d2]:
             # Same worlds both days
@@ -381,12 +407,18 @@ class AfterThatIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         logger.info("Handling AfterThatIntent")
+        now, day, midnight, last_day = _get_time_state()
+        session_attr = handler_input.attributes_manager.session_attributes
+        last_context = session_attr.get('last_context')
+
+        if last_context == 'challenge':
+            return self._handle_challenge_followup(handler_input, session_attr, now)
+
+        # Default: world follow-up
         error = _data_unavailable_response(handler_input)
         if error:
             return error
-        now, day, midnight, last_day = _get_time_state()
 
-        session_attr = handler_input.attributes_manager.session_attributes
         last_answered_day = session_attr.get('last_answered_day')
 
         if last_answered_day is None:
@@ -411,6 +443,413 @@ class AfterThatIntentHandler(AbstractRequestHandler):
                 .ask(" ")
                 .response
         )
+
+    def _handle_challenge_followup(self, handler_input, session_attr, now):
+        """Handle 'after that' following a challenge query — advance by one week."""
+        if challengeData is None:
+            speak = ("Sorry, the weekly challenge data is temporarily unavailable. "
+                     "Please try again later.")
+            return handler_input.response_builder.speak(speak).response
+
+        last_date_str = session_attr.get('last_challenge_date')
+        if not last_date_str:
+            speak = "After what? Try asking about the route or climb of the week first."
+            return handler_input.response_builder.speak(speak).ask(speak).response
+
+        last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
+        next_date = last_date + timedelta(days=7)
+        month_key = next_date.strftime("%Y-%m")
+        month_data = challengeData.get(month_key)
+
+        if month_data is None:
+            speak = "I don't have challenge data that far out."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        entry, _ = _find_challenge_for_day(month_data, next_date.day)
+        if entry is None:
+            speak = "I don't have challenge data that far out."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        categories = session_attr.get('last_challenge_categories', ['route', 'climb'])
+        locale = handler_input.request_envelope.request.locale or "en-US"
+        use_imperial = locale.startswith("en-US")
+
+        # Format the response
+        parts = []
+        for cat in categories:
+            if cat not in entry:
+                continue
+            ch = entry[cat]
+            short_label = _challenge_type_label(cat, short=True)
+            name = _format_challenge_name(ch)
+            overview = "The following week's %s is %s, worth %d XP." % (
+                short_label, name, ch["xp"])
+            dist = _format_distance(ch, use_imperial)
+            elev = _format_elevation(ch, use_imperial)
+            if dist and elev:
+                overview += " It's %s long with %s of elevation gain." % (dist, elev)
+            elif dist:
+                overview += " It's %s long." % dist
+            elif elev:
+                overview += " It has %s of elevation gain." % elev
+            parts.append(overview)
+
+        if not parts:
+            speak = "I don't have challenge data for that week."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        speak = " ".join(parts)
+        if _needs_ssml(speak):
+            speak = "<speak>" + speak + "</speak>"
+
+        # Update session for further chaining
+        session_attr['last_challenge_date'] = next_date.strftime("%Y-%m-%d")
+
+        return (
+            handler_input.response_builder
+                .speak(speak)
+                .ask(" ")
+                .response
+        )
+
+
+def _resolve_slot(handler_input, slot_name):
+    """Resolve a custom slot value, returning the canonical value or None.
+
+    Tries the resolution authority chain first (gives canonical value),
+    then falls back to the raw slot value.
+    """
+    try:
+        slot = handler_input.request_envelope.request.intent.slots[slot_name]
+    except (AttributeError, KeyError, TypeError):
+        return None
+    # Try resolution authority (canonical value)
+    try:
+        return slot.resolutions.resolutions_per_authority[0].values[0].value.name
+    except (AttributeError, IndexError, KeyError, TypeError):
+        pass
+    # Fall back to raw slot value
+    return getattr(slot, 'value', None)
+
+
+def _find_challenge_for_day(month_data, day):
+    """Find the challenge entry active on the given day.
+
+    Challenge entries are keyed by their start day (e.g., "1", "8", "15").
+    A challenge is active from its start day until the next entry's start day.
+    Returns (entry_dict, start_day) or (None, None).
+    """
+    if not month_data:
+        return None, None
+    start_days = sorted(int(d) for d in month_data.keys())
+    active_day = None
+    for d in start_days:
+        if d <= day:
+            active_day = d
+        else:
+            break
+    if active_day is None:
+        return None, None
+    return month_data[str(active_day)], active_day
+
+
+def _format_challenge_name(entry):
+    """Return SSML-wrapped name if phonetic override exists, else plain name."""
+    return entry.get("name_ssml", entry["name"])
+
+
+def _needs_ssml(text):
+    """Check if text contains SSML tags and needs <speak> wrapper."""
+    return "<phoneme" in text
+
+
+def _format_distance(entry, use_imperial):
+    """Format distance string from entry, or return None if unavailable."""
+    if use_imperial and "distance_mi" in entry:
+        return "%.1f miles" % entry["distance_mi"]
+    elif not use_imperial and "distance_km" in entry:
+        return "%.1f kilometers" % entry["distance_km"]
+    return None
+
+
+def _format_elevation(entry, use_imperial):
+    """Format elevation string from entry, or return None if unavailable."""
+    if use_imperial and "elevation_ft" in entry:
+        return "{:,.0f} feet".format(entry["elevation_ft"])
+    elif not use_imperial and "elevation_m" in entry:
+        return "{:,.0f} meters".format(entry["elevation_m"])
+    return None
+
+
+def _challenge_type_label(category, short=False):
+    """Return the spoken label for a challenge category.
+
+    Use short=True when combining with a timeframe like "This week's"
+    to avoid "This week's route of the week" redundancy.
+    """
+    if short:
+        return "route" if category == "route" else "climb"
+    if category == "route":
+        return "route of the week"
+    return "climb of the week"
+
+
+class WeeklyChallengeIntentHandler(AbstractRequestHandler):
+    """Handler for Weekly Challenge Intent — route/climb of the week queries."""
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("WeeklyChallengeIntent")(handler_input)
+
+    def handle(self, handler_input):
+        logger.info("Handling WeeklyChallengeIntent")
+
+        if challengeData is None:
+            speak = ("Sorry, the weekly challenge data is temporarily unavailable. "
+                     "Please try again later.")
+            return handler_input.response_builder.speak(speak).response
+
+        now, day, midnight, last_day = _get_time_state()
+
+        challenge_type = _resolve_slot(handler_input, "challengeType")
+        challenge_detail = _resolve_slot(handler_input, "challengeDetail")
+        challenge_timeframe = _resolve_slot(handler_input, "challengeTimeframe")
+
+        # Determine units based on locale
+        locale = handler_input.request_envelope.request.locale or "en-US"
+        use_imperial = locale.startswith("en-US")
+
+        current_month_key = now.strftime("%Y-%m")
+
+        # Determine which categories to report
+        if challenge_type == "route of the week":
+            categories = ["route"]
+        elif challenge_type == "climb of the week":
+            categories = ["climb"]
+        else:
+            categories = ["route", "climb"]
+
+        # Handle "when does it change" / "how long until change" queries
+        if challenge_detail is None and challenge_type is not None:
+            raw_utterance = ""
+            try:
+                # Check if this is a "when does it change" type query
+                # by looking at the intent's raw input
+                raw_utterance = handler_input.request_envelope.request.intent.name
+            except Exception:
+                pass
+
+        # Handle change schedule queries
+        # The utterance patterns "when does the {challengeType} change" and
+        # "how long until the {challengeType} changes" are matched by having
+        # a challengeType but no detail or timeframe
+        # We detect this from the utterance text if available
+
+        # --- Determine timeframe and look up data ---
+        if challenge_timeframe == "this month":
+            return self._handle_this_month(
+                handler_input, challengeData, current_month_key, day, last_day,
+                categories, use_imperial, now)
+
+        if challenge_timeframe == "next month":
+            return self._handle_next_month(
+                handler_input, challengeData, now, categories, use_imperial)
+
+        if challenge_timeframe == "next week":
+            # Calculate the date 7 days from now
+            next_week = now + timedelta(days=7)
+            month_key = next_week.strftime("%Y-%m")
+            month_data = challengeData.get(month_key)
+            if month_data is None:
+                speak = "I don't have next week's challenge schedule yet."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+            entry, _ = _find_challenge_for_day(month_data, next_week.day)
+            if entry is None:
+                speak = "I don't have challenge data for next week."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+            timeframe_label = "Next week"
+            answer_date = next_week
+        else:
+            # Default: this week
+            month_data = challengeData.get(current_month_key)
+            if month_data is None:
+                speak = "I don't have challenge data for this month."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+            entry, _ = _find_challenge_for_day(month_data, day)
+            if entry is None:
+                speak = "I don't have challenge data for this week."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+            timeframe_label = "This week"
+            answer_date = now
+
+        # --- Set session context for AfterThat follow-ups ---
+        session_attr = handler_input.attributes_manager.session_attributes
+        session_attr['last_context'] = 'challenge'
+        session_attr['last_challenge_date'] = answer_date.strftime("%Y-%m-%d")
+        session_attr['last_challenge_categories'] = categories
+
+        # --- Format response ---
+        speak = self._format_response(
+            entry, categories, challenge_detail, timeframe_label, use_imperial)
+
+        if _needs_ssml(speak):
+            speak = "<speak>" + speak + "</speak>"
+
+        return (
+            handler_input.response_builder
+                .speak(speak)
+                .ask(" ")
+                .response
+        )
+
+    def _format_response(self, entry, categories, detail, timeframe_label, use_imperial):
+        """Build the spoken response for a single week's challenge data."""
+        parts = []
+
+        for cat in categories:
+            if cat not in entry:
+                continue
+            ch = entry[cat]
+            label = _challenge_type_label(cat)
+            name = _format_challenge_name(ch)
+
+            if detail == "XP":
+                parts.append("The %s is worth %d experience points." % (label, ch["xp"]))
+            elif detail == "distance":
+                dist = _format_distance(ch, use_imperial)
+                if dist:
+                    parts.append("The %s, %s, is %s long." % (label, name, dist))
+                else:
+                    parts.append("I don't have the distance for %s." % name)
+            elif detail == "elevation":
+                elev = _format_elevation(ch, use_imperial)
+                if elev:
+                    parts.append("The %s, %s, has %s of elevation gain." % (label, name, elev))
+                else:
+                    parts.append("I don't have the elevation for %s." % name)
+            else:
+                # Overview: name + XP, plus distance/elevation if available
+                short_label = _challenge_type_label(cat, short=True)
+                overview = "%s's %s is %s, worth %d XP." % (
+                    timeframe_label, short_label, name, ch["xp"])
+                dist = _format_distance(ch, use_imperial)
+                elev = _format_elevation(ch, use_imperial)
+                if dist and elev:
+                    overview += " It's %s long with %s of elevation gain." % (dist, elev)
+                elif dist:
+                    overview += " It's %s long." % dist
+                elif elev:
+                    overview += " It has %s of elevation gain." % elev
+                parts.append(overview)
+
+        if not parts:
+            return "I don't have challenge data for that."
+
+        return " ".join(parts)
+
+    def _handle_this_month(self, handler_input, data, month_key, day, last_day,
+                           categories, use_imperial, now):
+        """List remaining challenges for this month."""
+        month_data = data.get(month_key)
+        if not month_data:
+            speak = "I don't have challenge data for this month."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        start_days = sorted(int(d) for d in month_data.keys())
+        # Filter to entries that are still active (start day + next start covers today or later)
+        remaining = []
+        for i, start in enumerate(start_days):
+            # An entry is "remaining" if its active period overlaps with today or later
+            if i + 1 < len(start_days):
+                end = start_days[i + 1] - 1
+            else:
+                end = last_day
+            if end >= day:
+                remaining.append((start, end, month_data[str(start)]))
+
+        if not remaining:
+            speak = "There are no more challenge routes this month."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        for cat in categories:
+            label = _challenge_type_label(cat, short=True) + "s"
+            names = []
+            for start, end, entry_data in remaining:
+                if cat not in entry_data:
+                    continue
+                ch = entry_data[cat]
+                name = _format_challenge_name(ch)
+                start_dt = now.replace(day=start)
+                end_dt = now.replace(day=end)
+                if start <= day:
+                    names.append("%s through %s" % (name, _ordinal_date_string(end_dt)))
+                else:
+                    names.append("%s starting %s" % (name, _ordinal_date_string(start_dt)))
+
+            if names:
+                speak = "The remaining %s this month are: %s." % (label, ", then ".join(names))
+                if _needs_ssml(speak):
+                    speak = "<speak>" + speak + "</speak>"
+                return (
+                    handler_input.response_builder
+                        .speak(speak)
+                        .ask(" ")
+                        .response
+                )
+
+        speak = "I don't have challenge data for this month."
+        return handler_input.response_builder.speak(speak).ask(" ").response
+
+    def _handle_next_month(self, handler_input, data, now, categories, use_imperial):
+        """List challenges for next month."""
+        if now.month == 12:
+            next_month_key = "%04d-01" % (now.year + 1)
+        else:
+            next_month_key = "%04d-%02d" % (now.year, now.month + 1)
+
+        month_data = data.get(next_month_key)
+        if not month_data:
+            speak = "I don't have next month's challenge schedule yet."
+            return handler_input.response_builder.speak(speak).ask(" ").response
+
+        start_days = sorted(int(d) for d in month_data.keys())
+
+        for cat in categories:
+            label = _challenge_type_label(cat, short=True) + "s"
+            names = []
+            for start in start_days:
+                entry_data = month_data[str(start)]
+                if cat not in entry_data:
+                    continue
+                ch = entry_data[cat]
+                name = _format_challenge_name(ch)
+                names.append("%s starting the %s" % (name, _ordinal_suffix(start)))
+
+            if names:
+                speak = "Next month's %s are: %s." % (label, ", then ".join(names))
+                if _needs_ssml(speak):
+                    speak = "<speak>" + speak + "</speak>"
+                return (
+                    handler_input.response_builder
+                        .speak(speak)
+                        .ask(" ")
+                        .response
+                )
+
+        speak = "I don't have next month's challenge schedule yet."
+        return handler_input.response_builder.speak(speak).ask(" ").response
+
+
+def _ordinal_suffix(day_num):
+    """Return day number with ordinal suffix (e.g., '1st', '2nd', '3rd')."""
+    if 11 <= day_num <= 13:
+        return str(day_num) + "th"
+    elif day_num % 10 == 1:
+        return str(day_num) + "st"
+    elif day_num % 10 == 2:
+        return str(day_num) + "nd"
+    elif day_num % 10 == 3:
+        return str(day_num) + "rd"
+    else:
+        return str(day_num) + "th"
 
 
 class ZwiftTimeIntentHandler(AbstractRequestHandler):
@@ -582,6 +1021,7 @@ sb.add_request_handler(TomorrowsWorldIntentHandler())
 sb.add_request_handler(WhenWorldIntentHandler())
 sb.add_request_handler(WorldOnDateIntentHandler())
 sb.add_request_handler(AfterThatIntentHandler())
+sb.add_request_handler(WeeklyChallengeIntentHandler())
 sb.add_request_handler(ZwiftTimeIntentHandler())
 sb.add_request_handler(NextWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())

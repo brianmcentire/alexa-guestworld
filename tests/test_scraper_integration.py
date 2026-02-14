@@ -16,9 +16,9 @@ import boto3
 import pytest
 import requests
 
-# Make scraper_core importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "guest-world-scraper"))
-from scraper_core import parse_calendar_html
+# Make guestworld_scraper_core importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "scrapers"))
+from guestworld_scraper_core import parse_calendar_html
 
 pytestmark = pytest.mark.integration
 
@@ -95,7 +95,7 @@ class TestFullScraperOutput:
 
         try:
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
         finally:

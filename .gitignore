@@ -22,7 +22,7 @@ venv/
 *.swo
 
 # Build artifacts
-scraper-lambda/build/
+scrapers/build/
 
 # ASK CLI
 .ask/

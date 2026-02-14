@@ -1,4 +1,4 @@
-"""Tests for scraper-lambda/scraper_handler.py."""
+"""Tests for scrapers/guestworld_scraper_handler.py."""
 
 import os
 import sys
@@ -7,12 +7,10 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-# Add scraper-lambda and guest-world-scraper to path
-_REPO = os.path.join(os.path.dirname(__file__), os.pardir)
-sys.path.insert(0, os.path.join(_REPO, "scraper-lambda"))
-sys.path.insert(0, os.path.join(_REPO, "guest-world-scraper"))
+# Add scrapers to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "scrapers"))
 
-from scraper_handler import lambda_handler
+from guestworld_scraper_handler import lambda_handler
 
 
 def _build_calendar_html(world_map):
@@ -62,12 +60,12 @@ class TestScraperLambdaHappyPath:
         mock_response.content = html_content.encode("utf-8")
         mock_response.raise_for_status = MagicMock()
 
-        # Fix utcnow to January 2026 — archive key should be 202602
+        # Fix utcnow to January 2026 — archive key should be 202601
         fake_now = datetime(2026, 1, 15)
 
-        with patch("scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("scraper_handler.requests.get", return_value=mock_response), \
-             patch("scraper_handler.datetime") as mock_dt:
+        with patch("guestworld_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
+             patch("guestworld_scraper_handler.requests.get", return_value=mock_response), \
+             patch("guestworld_scraper_handler.datetime") as mock_dt:
             mock_dt.utcnow.return_value = fake_now
             # Allow timedelta and strftime to work normally
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -76,7 +74,7 @@ class TestScraperLambdaHappyPath:
 
         assert result["statusCode"] == 200
         assert result["days_scraped"] == 2
-        assert result["archive_key"] == "GuestWorlds202602.csv"
+        assert result["archive_key"] == "GuestWorlds202601.csv"
 
         # Verify two S3 put_object calls
         put_calls = mock_s3.put_object.call_args_list
@@ -87,7 +85,7 @@ class TestScraperLambdaHappyPath:
             Bucket="guestworldskill", Key="GuestWorlds.csv", Body=expected_csv, ACL="public-read"
         )
         assert put_calls[1] == call(
-            Bucket="guestworldskill", Key="GuestWorlds202602.csv", Body=expected_csv, ACL="public-read"
+            Bucket="guestworldskill", Key="GuestWorlds202601.csv", Body=expected_csv, ACL="public-read"
         )
 
         mock_response.raise_for_status.assert_called_once()
@@ -112,8 +110,8 @@ class TestScraperLambdaEmptyCalendar:
         mock_response.content = html_content.encode("utf-8")
         mock_response.raise_for_status = MagicMock()
 
-        with patch("scraper_handler.boto3.client", return_value=mock_ssm), \
-             patch("scraper_handler.requests.get", return_value=mock_response), \
+        with patch("guestworld_scraper_handler.boto3.client", return_value=mock_ssm), \
+             patch("guestworld_scraper_handler.requests.get", return_value=mock_response), \
              pytest.raises(ValueError, match="No calendar data found"):
             lambda_handler({}, None)
 
@@ -131,15 +129,15 @@ class TestScraperLambdaHTTPError:
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = HTTPError("500 Server Error")
 
-        with patch("scraper_handler.boto3.client", return_value=mock_ssm), \
-             patch("scraper_handler.requests.get", return_value=mock_response), \
+        with patch("guestworld_scraper_handler.boto3.client", return_value=mock_ssm), \
+             patch("guestworld_scraper_handler.requests.get", return_value=mock_response), \
              pytest.raises(HTTPError):
             lambda_handler({}, None)
 
 
 class TestScraperLambdaDecemberArchive:
-    def test_december_rolls_to_next_year(self):
-        """Archive key for December scrape uses next year's January."""
+    def test_december_archive_uses_current_month(self):
+        """Archive key for December scrape uses December of current year."""
         world_data = [(1, ["Yorkshire", "London"])]
         html_content = _build_calendar_html(world_data)
 
@@ -161,15 +159,15 @@ class TestScraperLambdaDecemberArchive:
         mock_response.content = html_content.encode("utf-8")
         mock_response.raise_for_status = MagicMock()
 
-        # Fix utcnow to December 2025 — archive key should be 202601
+        # Fix utcnow to December 2025 — archive key should be 202512
         fake_now = datetime(2025, 12, 28)
 
-        with patch("scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("scraper_handler.requests.get", return_value=mock_response), \
-             patch("scraper_handler.datetime") as mock_dt:
+        with patch("guestworld_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
+             patch("guestworld_scraper_handler.requests.get", return_value=mock_response), \
+             patch("guestworld_scraper_handler.datetime") as mock_dt:
             mock_dt.utcnow.return_value = fake_now
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
 
             result = lambda_handler({}, None)
 
-        assert result["archive_key"] == "GuestWorlds202601.csv"
+        assert result["archive_key"] == "GuestWorlds202512.csv"

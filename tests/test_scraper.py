@@ -1,6 +1,6 @@
-"""Tests for scraper_core and guest-world-scraper/getCalendar-writesToStdout.py.
+"""Tests for guestworld_scraper_core and scrapers/getCalendar-writesToStdout.py.
 
-Pure-function tests for scraper_core come first (fast, no mocking).
+Pure-function tests for guestworld_scraper_core come first (fast, no mocking).
 CLI script tests use runpy.run_path() with patched boto3/requests.
 """
 
@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Make scraper_core importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "guest-world-scraper"))
-from scraper_core import parse_calendar_html, format_csv
+# Make guestworld_scraper_core importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "scrapers"))
+from guestworld_scraper_core import parse_calendar_html, format_csv
 
 
 def _build_calendar_html(world_map):
@@ -159,7 +159,7 @@ class TestScraperValidHTML:
 
             import runpy
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
 
@@ -186,7 +186,7 @@ class TestScraperSSMFailure:
              pytest.raises(ClientError):
             import runpy
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
 
@@ -204,7 +204,7 @@ class TestScraperHTTPFailure:
              pytest.raises(ConnectionError):
             import runpy
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
 
@@ -235,7 +235,7 @@ class TestScraperEmptyCalendar:
 
             import runpy
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
 
@@ -281,7 +281,7 @@ class TestScraperWeekendDayNumber:
 
             import runpy
             runpy.run_path(
-                "guest-world-scraper/getCalendar-writesToStdout.py",
+                "scrapers/getCalendar-writesToStdout.py",
                 run_name="__main__",
             )
 
