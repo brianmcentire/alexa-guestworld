@@ -1,26 +1,25 @@
 # alexa-guestworld
 An Alexa Skill for getting information about which Guest Worlds are live and coming up in Zwift
 
-Zwift is a massively multiplayer online game which brings cyclists and athletes from all over the world together in a virtual world to race or train together. It also provides an immersive environment for individuals to train in to take the boredom out of riding indoors.
+Zwift is a massively multiplayer online cycling and running platform that brings athletes from all over the world together in virtual worlds to race, train, and ride together. The platform offers a rotating selection of guest worlds each day, and this Alexa Skill lets you check the schedule hands-free while you're getting ready to ride.
 
-The platform offers a choice of worlds to ride and run in, which changes from day to day. When starting a session, users have a choice of one of 3 active worlds. There are several websites which offer current and upcoming world schedule information.
+It's my preferred way to inquire about my upcoming ride options while having morning coffee.
 
-This Alexa Guest World Calendar skill provides another method, it is the one I prefer to use to inquire about my upcoming ride options while having morning coffee.
+This skill is invoked with "Alexa, ask Which World..."
 
-This skill is invoked with "Alexa, ask Which World..." 
-
-Some of the questions (intents) this skill will answer are:
   * "Where can I ride today?"
-  * "When can I run in London?"
-  * "What guest world is next?"
-  * "Where can I ride next weekend?"
-  * "What map is available Tuesday?"
-  * "What can I ride on the 17th?"
-  
-I developed this code to "scratch an itch" and decided to share it with Zwifters all over the world. It is available for free and is published in the Alexa Store:
-  * https://www.amazon.com/B-Scott-Guest-World-Calendar/dp/B084ZVL2Y8/ref=sr_1_1?dchild=1&keywords=guest+world+calendar&qid=1615303648&s=digital-skills&sr=1-1#customerReviews
-  
-This skill has users from all corners of the world. I hope you enjoy it too!
+  * "Where can I ride tomorrow?"
+  *    ... "And after that?"
+  * "When can I ride in London?"
+  * "Where can I ride next Saturday?"
+  * "What map is available on the 17th?"
+  * "What is the route of the week?"
+  * "What is the climb of the week next week?"
+  * "How much XP is the route of the week worth?"
+  * "When does the world change next?"
 
-### Upcoming features
-Currently, calendar data must be updated manually at the begginning of each month. Data is pulled from the Zwift community website, transformed, and then uploaded to S3 for access by this skill. Pulling data directly from Zwift's API would eliminate the need for manual updates.
+Users from all over the world, including every continent except Antarctica, have used it and I hope you enjoy it too! (If you use it from Antarctica, please let me know ;-)
+
+Available for free in the Alexa Skills Store:
+
+[![Guest World Calendar](assets/GuestWorldCalendar-icon.png)](https://www.amazon.com/B-Scott-Guest-World-Calendar/dp/B084ZVL2Y8/ref=cm_cr_arp_d_pb_opt?ie=UTF8)
