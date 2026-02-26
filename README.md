@@ -23,3 +23,9 @@ Users from all over the world, including every continent except Antarctica, have
 Available for free in the Alexa Skills Store:
 
 [![Guest World Calendar](assets/GuestWorldCalendar-icon.png)](https://www.amazon.com/B-Scott-Guest-World-Calendar/dp/B084ZVL2Y8/ref=cm_cr_arp_d_pb_opt?ie=UTF8)
+
+## Contributing
+
+This is a personal project shared for the community's use. Issues and PRs may not receive responses. Feedback is welcome; please don't expect timely replies or merges.
+
+License: Proprietary - All Rights Reserved.

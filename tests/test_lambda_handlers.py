@@ -54,6 +54,22 @@ class TestTodaysWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "temporarily unavailable" in spoken
 
+    def test_meta_activity_slot_returns_help(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
+        hi = mock_handler_input(intent_name="TodaysWorldIntent")
+        activity_slot = MagicMock()
+        activity_slot.value = "say"
+        hi.request_envelope.request.intent.slots = {"Activity": activity_slot}
+        handler = lambda_function.TodaysWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "You can say" in spoken
+        assert "route of the week" in spoken
+
 
 # ---------------------------------------------------------------------------
 # TomorrowsWorldIntentHandler

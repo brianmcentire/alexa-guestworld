@@ -25,6 +25,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+HELP_SPEAK_OUTPUT = (
+    "You can say, what are today's guest worlds? "
+    "What can I ride on the 24th? "
+    "When is London? "
+    "What's next? "
+    "What is the route of the week? "
+    "What is the climb of the week next week?"
+)
+
+
 # ---------------------------------------------------------------------------
 # Time and data helpers
 # ---------------------------------------------------------------------------
@@ -48,6 +58,15 @@ def _data_unavailable_response(handler_input):
         )
         return handler_input.response_builder.speak(speak).response
     return None
+
+
+def _help_response(handler_input):
+    """Return a consistent help response used by help and misroute fallback."""
+    return (
+        handler_input.response_builder.speak(HELP_SPEAK_OUTPUT)
+        .ask(HELP_SPEAK_OUTPUT)
+        .response
+    )
 
 
 def _ordinal_date_string(dt):
@@ -240,6 +259,21 @@ class TodaysWorldIntentHandler(AbstractRequestHandler):
         error = _data_unavailable_response(handler_input)
         if error:
             return error
+
+        # NLU may occasionally route "what can I say/ask" here through Activity.
+        # Treat these as help requests instead of world queries.
+        try:
+            activity_slot = handler_input.request_envelope.request.intent.slots.get(
+                "Activity"
+            )
+            activity_value = (
+                (getattr(activity_slot, "value", "") or "").strip().casefold()
+            )
+        except Exception:
+            activity_value = ""
+        if activity_value in {"say", "ask", "help"}:
+            return _help_response(handler_input)
+
         now, day, midnight, last_day = _get_time_state()
 
         speak_output = "Todays Guest Worlds are " + worldList[day]
@@ -1226,13 +1260,7 @@ class HelpIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "You can say, what are today's guest worlds? Where can I ride tomorrow? What's available this weekend? What's Next? Or, when can I run in London?"
-
-        return (
-            handler_input.response_builder.speak(speak_output)
-            .ask(speak_output)
-            .response
-        )
+        return _help_response(handler_input)
 
 
 class CancelOrStopIntentHandler(AbstractRequestHandler):
