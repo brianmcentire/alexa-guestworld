@@ -29,9 +29,10 @@ logger.setLevel(logging.INFO)
 # Time and data helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_time_state():
     """Return fresh (now, day, midnight, last_day) for the current invocation."""
-    now = datetime.now(tz.gettz('America/New_York'))
+    now = datetime.now(tz.gettz("America/New_York"))
     day = now.day
     midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0)
     last_day = calendar.monthrange(now.year, now.month)[1]
@@ -41,8 +42,10 @@ def _get_time_state():
 def _data_unavailable_response(handler_input):
     """If worldList failed to load, return a friendly error response."""
     if worldList is None:
-        speak = ("Sorry, the Guest World calendar is temporarily unavailable. "
-                 "Please try again later.")
+        speak = (
+            "Sorry, the Guest World calendar is temporarily unavailable. "
+            "Please try again later."
+        )
         return handler_input.response_builder.speak(speak).response
     return None
 
@@ -75,7 +78,7 @@ def _parse_amazon_date(date_str, now):
     last_day = calendar.monthrange(now.year, now.month)[1]
 
     # Weekend format: YYYY-Www-WE → Saturday + Sunday of that ISO week
-    m = re.match(r'^(\d{4})-W(\d{1,2})-WE$', date_str)
+    m = re.match(r"^(\d{4})-W(\d{1,2})-WE$", date_str)
     if m:
         year, week = int(m.group(1)), int(m.group(2))
         try:
@@ -90,7 +93,7 @@ def _parse_amazon_date(date_str, now):
         return results
 
     # Recurring day-of-month: XXXX-XX-DD (e.g. "the twenty seventh")
-    m = re.match(r'^XXXX-XX-(\d{2})$', date_str)
+    m = re.match(r"^XXXX-XX-(\d{2})$", date_str)
     if m:
         d = int(m.group(1))
         if 1 <= d <= last_day:
@@ -113,21 +116,35 @@ def _parse_amazon_date(date_str, now):
 # ---------------------------------------------------------------------------
 
 worldList = None
+nextMonthWorldList = None
+
+
+def _build_world_list_from_csv(csv_text):
+    """Convert GuestWorlds CSV content into the in-memory list format."""
+    data = ["IndexZero"]
+    lines = csv_text.split("\n")
+    for row in lines:
+        row = row.split(",")
+        data.append(row[0].replace("NEWYORK", "New York"))
+    return data
+
+
+def _get_next_month_year(year, month):
+    """Return (year, month) for the month immediately after inputs."""
+    if month == 12:
+        return year + 1, 1
+    return year, month + 1
 
 
 def _load_world_list():
     """Read the processed calendar from S3 into worldList for quick lookups."""
     global worldList
     try:
-        s3 = boto3.resource('s3')
-        bucket = s3.Bucket('guestworldskill')
-        obj = bucket.Object('GuestWorlds.csv')
+        s3 = boto3.resource("s3")
+        bucket = s3.Bucket("guestworldskill")
+        obj = bucket.Object("GuestWorlds.csv")
         response = obj.get()
-        worldList = ["IndexZero"]
-        lines = response['Body'].read().decode('utf-8').split('\n')
-        for row in lines:
-            row = row.split(",")
-            worldList.append(row[0].replace("NEWYORK", "New York"))
+        worldList = _build_world_list_from_csv(response["Body"].read().decode("utf-8"))
         logger.info("Loaded %d days of calendar data from S3", len(worldList) - 1)
     except Exception:
         logger.error("Failed to load calendar data from S3", exc_info=True)
@@ -137,6 +154,35 @@ def _load_world_list():
 _load_world_list()
 
 
+def _load_next_month_world_list():
+    """Optionally load next month's archived calendar from S3."""
+    global nextMonthWorldList
+    try:
+        now = datetime.now(tz.gettz("America/New_York"))
+        next_year, next_month = _get_next_month_year(now.year, now.month)
+        key = "GuestWorlds%04d%02d.csv" % (next_year, next_month)
+
+        s3 = boto3.resource("s3")
+        bucket = s3.Bucket("guestworldskill")
+        obj = bucket.Object(key)
+        response = obj.get()
+
+        nextMonthWorldList = _build_world_list_from_csv(
+            response["Body"].read().decode("utf-8")
+        )
+        logger.info(
+            "Loaded %d days of next-month calendar data from S3 key %s",
+            len(nextMonthWorldList) - 1,
+            key,
+        )
+    except Exception:
+        logger.info("Next-month calendar archive is not available yet")
+        nextMonthWorldList = None
+
+
+_load_next_month_world_list()
+
+
 challengeData = None
 
 
@@ -144,10 +190,10 @@ def _load_challenge_data():
     """Read weekly challenge data from S3 JSON."""
     global challengeData
     try:
-        s3 = boto3.resource('s3')
-        obj = s3.Bucket('guestworldskill').Object('WeeklyChallenges.json')
+        s3 = boto3.resource("s3")
+        obj = s3.Bucket("guestworldskill").Object("WeeklyChallenges.json")
         response = obj.get()
-        challengeData = json.loads(response['Body'].read().decode('utf-8'))
+        challengeData = json.loads(response["Body"].read().decode("utf-8"))
         logger.info("Loaded challenge data from S3")
     except Exception:
         logger.error("Failed to load challenge data from S3", exc_info=True)
@@ -161,8 +207,10 @@ _load_challenge_data()
 # Intent handlers
 # ---------------------------------------------------------------------------
 
+
 class LaunchRequestHandler(AbstractRequestHandler):
     """Handler for Skill Launch."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
 
@@ -173,15 +221,15 @@ class LaunchRequestHandler(AbstractRequestHandler):
         speak_output = "Welcome, you can say. What are todays guest worlds? Where can I ride tomorrow? What's available this weekend? What's Next? Or, when can I run in London?"
 
         return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(speak_output)
-                .response
+            handler_input.response_builder.speak(speak_output)
+            .ask(speak_output)
+            .response
         )
 
 
 class TodaysWorldIntentHandler(AbstractRequestHandler):
     """Handler for Todays World Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("TodaysWorldIntent")(handler_input)
@@ -197,19 +245,15 @@ class TodaysWorldIntentHandler(AbstractRequestHandler):
         speak_output = "Todays Guest Worlds are " + worldList[day]
 
         session_attr = handler_input.attributes_manager.session_attributes
-        session_attr['last_answered_day'] = day
-        session_attr['last_context'] = 'world'
+        session_attr["last_answered_day"] = day
+        session_attr["last_context"] = "world"
 
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak_output).ask(" ").response
 
 
 class TomorrowsWorldIntentHandler(AbstractRequestHandler):
     """Handler for Tomorrows World Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("TomorrowsWorldIntent")(handler_input)
@@ -226,21 +270,27 @@ class TomorrowsWorldIntentHandler(AbstractRequestHandler):
 
         if day < last_day:
             speak_output = "Tomorrow's Guest Worlds are " + worldList[day + 1]
-            session_attr['last_answered_day'] = day + 1
-            session_attr['last_context'] = 'world'
+            session_attr["last_answered_day"] = day + 1
+            session_attr["last_context"] = "world"
+            session_attr["last_answered_month_offset"] = 0
+        elif nextMonthWorldList is not None and len(nextMonthWorldList) > 1:
+            speak_output = "Tomorrow's Guest Worlds are " + nextMonthWorldList[1]
+            session_attr["last_answered_day"] = 1
+            session_attr["last_context"] = "world"
+            session_attr["last_answered_month_offset"] = 1
         else:
-            speak_output = "I don't know next month's schedule yet. " + worldList[day] + " are available today. Ask me again tomorrow."
+            speak_output = (
+                "I don't know next month's schedule yet. "
+                + worldList[day]
+                + " are available today. Ask me again tomorrow."
+            )
 
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak_output).ask(" ").response
 
 
 class WhenWorldIntentHandler(AbstractRequestHandler):
     """Handler for When World Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("WhenWorldIntent")(handler_input)
@@ -254,11 +304,15 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
         now, day, midnight, last_day = _get_time_state()
 
         try:
-            worldName = handler_input.request_envelope.request.intent.slots['GuestWorldName'].resolutions.resolutions_per_authority[0].values[0].value.name
+            worldName = (
+                handler_input.request_envelope.request.intent.slots["GuestWorldName"]
+                .resolutions.resolutions_per_authority[0]
+                .values[0]
+                .value.name
+            )
         except (AttributeError, IndexError, KeyError, TypeError):
             speak = "I didn't catch which world you asked about. Could you try again?"
             return handler_input.response_builder.speak(speak).ask(speak).response
-
 
         if worldName == "Watopia":
             speak_output = "Watopia is available today and every day."
@@ -266,42 +320,75 @@ class WhenWorldIntentHandler(AbstractRequestHandler):
             speak_output = "  "
 
             lookupDay = day
+            found_in_next_month = False
+            next_month_lookup_day = None
             # Be sure to compare case insensitive and eliminate white space spaces because of data source words like NEWYORK vs New York
-            worldNameToMatch = worldName.casefold().replace(" ","")
+            worldNameToMatch = worldName.casefold().replace(" ", "")
             while True:
                 if lookupDay > last_day:
                     break
-                if worldNameToMatch in worldList[lookupDay].casefold().replace(" ",""):
+                if worldNameToMatch in worldList[lookupDay].casefold().replace(" ", ""):
                     break
                 lookupDay += 1
 
+            if lookupDay > last_day and nextMonthWorldList is not None:
+                next_lookup = 1
+                while next_lookup < len(nextMonthWorldList):
+                    if worldNameToMatch in nextMonthWorldList[
+                        next_lookup
+                    ].casefold().replace(" ", ""):
+                        found_in_next_month = True
+                        next_month_lookup_day = next_lookup
+                        break
+                    next_lookup += 1
+
             speak_output += worldName
-            if (lookupDay == day):
+            if lookupDay == day:
                 speak_output += " is available now."
+            elif found_in_next_month:
+                next_year, next_month = _get_next_month_year(now.year, now.month)
+                days_until = (last_day - day) + next_month_lookup_day
+                if days_until == 1:
+                    speak_output += " will be available tomorrow."
+                else:
+                    next_date = datetime(next_year, next_month, next_month_lookup_day)
+                    speak_output += (
+                        " will be available in "
+                        + str(days_until)
+                        + " days on "
+                        + _ordinal_date_string(next_date)
+                        + "."
+                    )
             elif lookupDay > last_day:
                 speak_output += " won't be available until sometime next month."
             elif (lookupDay - day) == 1:
                 speak_output += " will be available tomorrow."
             else:
-                speak_output += (" will be available in " + str(lookupDay - day)
-                                 + " days on " + _ordinal_date_string(now.replace(day=lookupDay)) + ".")
+                speak_output += (
+                    " will be available in "
+                    + str(lookupDay - day)
+                    + " days on "
+                    + _ordinal_date_string(now.replace(day=lookupDay))
+                    + "."
+                )
 
             if lookupDay <= last_day:
                 session_attr = handler_input.attributes_manager.session_attributes
-                session_attr['last_answered_day'] = lookupDay
-                session_attr['last_context'] = 'world'
+                session_attr["last_answered_day"] = lookupDay
+                session_attr["last_context"] = "world"
+                session_attr["last_answered_month_offset"] = 0
+            elif found_in_next_month:
+                session_attr = handler_input.attributes_manager.session_attributes
+                session_attr["last_answered_day"] = next_month_lookup_day
+                session_attr["last_context"] = "world"
+                session_attr["last_answered_month_offset"] = 1
 
-
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak_output).ask(" ").response
 
 
 class WorldOnDateIntentHandler(AbstractRequestHandler):
     """Handler for World On Date Intent — answers 'what can I ride on Saturday?'"""
+
     def can_handle(self, handler_input):
         return ask_utils.is_intent_name("WorldOnDateIntent")(handler_input)
 
@@ -313,11 +400,42 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
         now, day, midnight, last_day = _get_time_state()
 
         try:
-            date_str = handler_input.request_envelope.request.intent.slots['requestedDate'].value
+            date_str = handler_input.request_envelope.request.intent.slots[
+                "requestedDate"
+            ].value
         except (AttributeError, KeyError, TypeError):
             date_str = None
 
         dates = _parse_amazon_date(date_str, now)
+
+        next_year, next_month = _get_next_month_year(now.year, now.month)
+
+        if not dates and date_str:
+            # Allow explicit next-month ISO dates when nextMonthWorldList is available.
+            try:
+                explicit_dt = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                explicit_dt = None
+
+            if (
+                explicit_dt
+                and nextMonthWorldList is not None
+                and explicit_dt.year == next_year
+                and explicit_dt.month == next_month
+                and 1 <= explicit_dt.day < len(nextMonthWorldList)
+            ):
+                session_attr = handler_input.attributes_manager.session_attributes
+                session_attr["last_context"] = "world"
+                session_attr["last_answered_day"] = explicit_dt.day
+                session_attr["last_answered_month_offset"] = 1
+                speak = (
+                    "On "
+                    + _ordinal_date_string(explicit_dt)
+                    + ", the guest worlds will be "
+                    + nextMonthWorldList[explicit_dt.day]
+                    + "."
+                )
+                return handler_input.response_builder.speak(speak).ask(" ").response
 
         if not dates and date_str:
             # Valid slot but different month or unparseable
@@ -333,9 +451,29 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
 
         if not future:
             # All requested dates are in the past
-            speak = ("The " + _ordinal_date_string(past[0][1]).split("the ", 1)[1]
-                     + " has already passed and I don't have next month's calendar yet. "
-                     + worldList[day] + " are available today.")
+            if len(past) == 1 and nextMonthWorldList is not None:
+                next_day = past[0][0]
+                if 1 <= next_day < len(nextMonthWorldList):
+                    next_date = datetime(next_year, next_month, next_day)
+                    session_attr = handler_input.attributes_manager.session_attributes
+                    session_attr["last_context"] = "world"
+                    session_attr["last_answered_day"] = next_day
+                    session_attr["last_answered_month_offset"] = 1
+                    speak = (
+                        "On "
+                        + _ordinal_date_string(next_date)
+                        + ", the guest worlds will be "
+                        + nextMonthWorldList[next_day]
+                        + "."
+                    )
+                    return handler_input.response_builder.speak(speak).ask(" ").response
+            speak = (
+                "The "
+                + _ordinal_date_string(past[0][1]).split("the ", 1)[1]
+                + " has already passed and I don't have next month's calendar yet. "
+                + worldList[day]
+                + " are available today."
+            )
             return handler_input.response_builder.speak(speak).ask(" ").response
 
         # Filter to only future/today dates
@@ -345,16 +483,24 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
         if len(dates) == 1:
             # Single date
             d, dt = dates[0]
-            session_attr['last_answered_day'] = d
-            session_attr['last_context'] = 'world'
-            speak = "On " + _ordinal_date_string(dt) + ", the guest worlds will be " + worldList[d] + "."
+            session_attr["last_answered_day"] = d
+            session_attr["last_context"] = "world"
+            session_attr["last_answered_month_offset"] = 0
+            speak = (
+                "On "
+                + _ordinal_date_string(dt)
+                + ", the guest worlds will be "
+                + worldList[d]
+                + "."
+            )
             return handler_input.response_builder.speak(speak).ask(" ").response
 
         # Weekend (2 dates)
         d1, dt1 = dates[0]
         d2, dt2 = dates[1]
-        session_attr['last_answered_day'] = d2
-        session_attr['last_context'] = 'world'
+        session_attr["last_answered_day"] = d2
+        session_attr["last_context"] = "world"
+        session_attr["last_answered_month_offset"] = 0
 
         if worldList[d1] == worldList[d2]:
             # Same worlds both days
@@ -364,19 +510,32 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             if today_is_weekend:
                 # Find this weekend's Saturday and Sunday
                 if now.weekday() == 5:  # Saturday
-                    this_weekend_days = {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                    this_weekend_days = (
+                        {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                    )
                 else:  # Sunday
-                    this_weekend_days = {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+                    this_weekend_days = (
+                        {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+                    )
 
             requested_days = {d1, d2}
             if today_is_weekend and requested_days != this_weekend_days:
                 # "Next weekend" said on a weekend — need disambiguation
-                speak = ("On Saturday and Sunday, " + _ordinal_date_string(dt1)
-                         + " and " + _ordinal_date_string(dt2).split("the ", 1)[1]
-                         + ", the guest worlds will be " + worldList[d1] + ".")
+                speak = (
+                    "On Saturday and Sunday, "
+                    + _ordinal_date_string(dt1)
+                    + " and "
+                    + _ordinal_date_string(dt2).split("the ", 1)[1]
+                    + ", the guest worlds will be "
+                    + worldList[d1]
+                    + "."
+                )
             else:
-                speak = ("This Saturday and Sunday, the guest worlds will be "
-                         + worldList[d1] + ".")
+                speak = (
+                    "This Saturday and Sunday, the guest worlds will be "
+                    + worldList[d1]
+                    + "."
+                )
             return handler_input.response_builder.speak(speak).ask(" ").response
         else:
             # Different worlds each day
@@ -384,24 +543,41 @@ class WorldOnDateIntentHandler(AbstractRequestHandler):
             this_weekend_days = set()
             if today_is_weekend:
                 if now.weekday() == 5:
-                    this_weekend_days = {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                    this_weekend_days = (
+                        {now.day, now.day + 1} if now.day + 1 <= last_day else {now.day}
+                    )
                 else:
-                    this_weekend_days = {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+                    this_weekend_days = (
+                        {now.day - 1, now.day} if now.day - 1 >= 1 else {now.day}
+                    )
 
             requested_days = {d1, d2}
             if today_is_weekend and requested_days != this_weekend_days:
-                speak = ("On Saturday " + _ordinal_date_string(dt1)
-                         + ", the guest worlds will be " + worldList[d1]
-                         + ". On Sunday " + _ordinal_date_string(dt2)
-                         + ", they will be " + worldList[d2] + ".")
+                speak = (
+                    "On Saturday "
+                    + _ordinal_date_string(dt1)
+                    + ", the guest worlds will be "
+                    + worldList[d1]
+                    + ". On Sunday "
+                    + _ordinal_date_string(dt2)
+                    + ", they will be "
+                    + worldList[d2]
+                    + "."
+                )
             else:
-                speak = ("On Saturday, the guest worlds will be " + worldList[d1]
-                         + ". On Sunday, they will be " + worldList[d2] + ".")
+                speak = (
+                    "On Saturday, the guest worlds will be "
+                    + worldList[d1]
+                    + ". On Sunday, they will be "
+                    + worldList[d2]
+                    + "."
+                )
             return handler_input.response_builder.speak(speak).ask(" ").response
 
 
 class AfterThatIntentHandler(AbstractRequestHandler):
     """Handler for After That Intent — answers 'and after that?' follow-ups."""
+
     def can_handle(self, handler_input):
         return ask_utils.is_intent_name("AfterThatIntent")(handler_input)
 
@@ -409,9 +585,9 @@ class AfterThatIntentHandler(AbstractRequestHandler):
         logger.info("Handling AfterThatIntent")
         now, day, midnight, last_day = _get_time_state()
         session_attr = handler_input.attributes_manager.session_attributes
-        last_context = session_attr.get('last_context')
+        last_context = session_attr.get("last_context")
 
-        if last_context == 'challenge':
+        if last_context == "challenge":
             return self._handle_challenge_followup(handler_input, session_attr, now)
 
         # Default: world follow-up
@@ -419,39 +595,98 @@ class AfterThatIntentHandler(AbstractRequestHandler):
         if error:
             return error
 
-        last_answered_day = session_attr.get('last_answered_day')
+        last_answered_day = session_attr.get("last_answered_day")
+        last_answered_month_offset = session_attr.get("last_answered_month_offset", 0)
 
         if last_answered_day is None:
             speak = "After what? Try asking what worlds are available today first."
             return handler_input.response_builder.speak(speak).ask(speak).response
 
-        next_day = last_answered_day + 1
-        while next_day <= last_day and worldList[next_day] == worldList[last_answered_day]:
-            next_day += 1
+        next_year, next_month = _get_next_month_year(now.year, now.month)
 
-        if next_day > last_day:
-            speak = "I don't have next month's schedule yet."
-            return handler_input.response_builder.speak(speak).ask(" ").response
+        if last_answered_month_offset == 1:
+            if not nextMonthWorldList:
+                speak = "I don't have next month's schedule yet."
+                return handler_input.response_builder.speak(speak).ask(" ").response
 
-        session_attr['last_answered_day'] = next_day
-        speak = ("On " + _ordinal_date_string(now.replace(day=next_day))
-                 + ", the guest worlds will be " + worldList[next_day] + ".")
+            next_day = last_answered_day + 1
+            while (
+                next_day < len(nextMonthWorldList)
+                and nextMonthWorldList[next_day]
+                == nextMonthWorldList[last_answered_day]
+            ):
+                next_day += 1
 
-        return (
-            handler_input.response_builder
-                .speak(speak)
-                .ask(" ")
-                .response
-        )
+            if next_day >= len(nextMonthWorldList):
+                speak = "I don't have next month's schedule yet."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+
+            session_attr["last_answered_day"] = next_day
+            session_attr["last_answered_month_offset"] = 1
+            next_date = datetime(next_year, next_month, next_day)
+            speak = (
+                "On "
+                + _ordinal_date_string(next_date)
+                + ", the guest worlds will be "
+                + nextMonthWorldList[next_day]
+                + "."
+            )
+        else:
+            next_day = last_answered_day + 1
+            while (
+                next_day <= last_day
+                and worldList[next_day] == worldList[last_answered_day]
+            ):
+                next_day += 1
+
+            if next_day <= last_day:
+                session_attr["last_answered_day"] = next_day
+                session_attr["last_answered_month_offset"] = 0
+                speak = (
+                    "On "
+                    + _ordinal_date_string(now.replace(day=next_day))
+                    + ", the guest worlds will be "
+                    + worldList[next_day]
+                    + "."
+                )
+            elif nextMonthWorldList is not None and len(nextMonthWorldList) > 1:
+                lookup = 1
+                while (
+                    lookup < len(nextMonthWorldList)
+                    and nextMonthWorldList[lookup] == worldList[last_answered_day]
+                ):
+                    lookup += 1
+
+                if lookup >= len(nextMonthWorldList):
+                    speak = "I don't have next month's schedule yet."
+                    return handler_input.response_builder.speak(speak).ask(" ").response
+
+                session_attr["last_answered_day"] = lookup
+                session_attr["last_answered_month_offset"] = 1
+                next_date = datetime(next_year, next_month, lookup)
+                speak = (
+                    "On "
+                    + _ordinal_date_string(next_date)
+                    + ", the guest worlds will be "
+                    + nextMonthWorldList[lookup]
+                    + "."
+                )
+            else:
+                speak = "I don't have next month's schedule yet."
+                return handler_input.response_builder.speak(speak).ask(" ").response
+
+        return handler_input.response_builder.speak(speak).ask(" ").response
 
     def _handle_challenge_followup(self, handler_input, session_attr, now):
         """Handle 'after that' following a challenge query — advance by one week."""
         if challengeData is None:
-            speak = ("Sorry, the weekly challenge data is temporarily unavailable. "
-                     "Please try again later.")
+            speak = (
+                "Sorry, the weekly challenge data is temporarily unavailable. "
+                "Please try again later."
+            )
             return handler_input.response_builder.speak(speak).response
 
-        last_date_str = session_attr.get('last_challenge_date')
+        last_date_str = session_attr.get("last_challenge_date")
         if not last_date_str:
             speak = "After what? Try asking about the route or climb of the week first."
             return handler_input.response_builder.speak(speak).ask(speak).response
@@ -470,7 +705,7 @@ class AfterThatIntentHandler(AbstractRequestHandler):
             speak = "I don't have challenge data that far out."
             return handler_input.response_builder.speak(speak).ask(" ").response
 
-        categories = session_attr.get('last_challenge_categories', ['route', 'climb'])
+        categories = session_attr.get("last_challenge_categories", ["route", "climb"])
         locale = handler_input.request_envelope.request.locale or "en-US"
         use_imperial = locale.startswith("en-US")
 
@@ -483,7 +718,10 @@ class AfterThatIntentHandler(AbstractRequestHandler):
             short_label = _challenge_type_label(cat, short=True)
             name = _format_challenge_name(ch)
             overview = "The following week's %s is %s, worth %d XP." % (
-                short_label, name, ch["xp"])
+                short_label,
+                name,
+                ch["xp"],
+            )
             dist = _format_distance(ch, use_imperial)
             elev = _format_elevation(ch, use_imperial)
             if dist and elev:
@@ -503,14 +741,9 @@ class AfterThatIntentHandler(AbstractRequestHandler):
             speak = "<speak>" + speak + "</speak>"
 
         # Update session for further chaining
-        session_attr['last_challenge_date'] = next_date.strftime("%Y-%m-%d")
+        session_attr["last_challenge_date"] = next_date.strftime("%Y-%m-%d")
 
-        return (
-            handler_input.response_builder
-                .speak(speak)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak).ask(" ").response
 
 
 def _resolve_slot(handler_input, slot_name):
@@ -529,7 +762,7 @@ def _resolve_slot(handler_input, slot_name):
     except (AttributeError, IndexError, KeyError, TypeError):
         pass
     # Fall back to raw slot value
-    return getattr(slot, 'value', None)
+    return getattr(slot, "value", None)
 
 
 def _find_challenge_for_day(month_data, day):
@@ -596,6 +829,7 @@ def _challenge_type_label(category, short=False):
 
 class WeeklyChallengeIntentHandler(AbstractRequestHandler):
     """Handler for Weekly Challenge Intent — route/climb of the week queries."""
+
     def can_handle(self, handler_input):
         return ask_utils.is_intent_name("WeeklyChallengeIntent")(handler_input)
 
@@ -603,8 +837,10 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
         logger.info("Handling WeeklyChallengeIntent")
 
         if challengeData is None:
-            speak = ("Sorry, the weekly challenge data is temporarily unavailable. "
-                     "Please try again later.")
+            speak = (
+                "Sorry, the weekly challenge data is temporarily unavailable. "
+                "Please try again later."
+            )
             return handler_input.response_builder.speak(speak).response
 
         now, day, midnight, last_day = _get_time_state()
@@ -646,12 +882,20 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
         # --- Determine timeframe and look up data ---
         if challenge_timeframe == "this month":
             return self._handle_this_month(
-                handler_input, challengeData, current_month_key, day, last_day,
-                categories, use_imperial, now)
+                handler_input,
+                challengeData,
+                current_month_key,
+                day,
+                last_day,
+                categories,
+                use_imperial,
+                now,
+            )
 
         if challenge_timeframe == "next month":
             return self._handle_next_month(
-                handler_input, challengeData, now, categories, use_imperial)
+                handler_input, challengeData, now, categories, use_imperial
+            )
 
         if challenge_timeframe == "next week":
             # Calculate the date 7 days from now
@@ -682,25 +926,23 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
 
         # --- Set session context for AfterThat follow-ups ---
         session_attr = handler_input.attributes_manager.session_attributes
-        session_attr['last_context'] = 'challenge'
-        session_attr['last_challenge_date'] = answer_date.strftime("%Y-%m-%d")
-        session_attr['last_challenge_categories'] = categories
+        session_attr["last_context"] = "challenge"
+        session_attr["last_challenge_date"] = answer_date.strftime("%Y-%m-%d")
+        session_attr["last_challenge_categories"] = categories
 
         # --- Format response ---
         speak = self._format_response(
-            entry, categories, challenge_detail, timeframe_label, use_imperial)
+            entry, categories, challenge_detail, timeframe_label, use_imperial
+        )
 
         if _needs_ssml(speak):
             speak = "<speak>" + speak + "</speak>"
 
-        return (
-            handler_input.response_builder
-                .speak(speak)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak).ask(" ").response
 
-    def _format_response(self, entry, categories, detail, timeframe_label, use_imperial):
+    def _format_response(
+        self, entry, categories, detail, timeframe_label, use_imperial
+    ):
         """Build the spoken response for a single week's challenge data."""
         parts = []
 
@@ -712,7 +954,9 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
             name = _format_challenge_name(ch)
 
             if detail == "XP":
-                parts.append("The %s is worth %d experience points." % (label, ch["xp"]))
+                parts.append(
+                    "The %s is worth %d experience points." % (label, ch["xp"])
+                )
             elif detail == "distance":
                 dist = _format_distance(ch, use_imperial)
                 if dist:
@@ -722,18 +966,27 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
             elif detail == "elevation":
                 elev = _format_elevation(ch, use_imperial)
                 if elev:
-                    parts.append("The %s, %s, has %s of elevation gain." % (label, name, elev))
+                    parts.append(
+                        "The %s, %s, has %s of elevation gain." % (label, name, elev)
+                    )
                 else:
                     parts.append("I don't have the elevation for %s." % name)
             else:
                 # Overview: name + XP, plus distance/elevation if available
                 short_label = _challenge_type_label(cat, short=True)
                 overview = "%s's %s is %s, worth %d XP." % (
-                    timeframe_label, short_label, name, ch["xp"])
+                    timeframe_label,
+                    short_label,
+                    name,
+                    ch["xp"],
+                )
                 dist = _format_distance(ch, use_imperial)
                 elev = _format_elevation(ch, use_imperial)
                 if dist and elev:
-                    overview += " It's %s long with %s of elevation gain." % (dist, elev)
+                    overview += " It's %s long with %s of elevation gain." % (
+                        dist,
+                        elev,
+                    )
                 elif dist:
                     overview += " It's %s long." % dist
                 elif elev:
@@ -745,8 +998,17 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
 
         return " ".join(parts)
 
-    def _handle_this_month(self, handler_input, data, month_key, day, last_day,
-                           categories, use_imperial, now):
+    def _handle_this_month(
+        self,
+        handler_input,
+        data,
+        month_key,
+        day,
+        last_day,
+        categories,
+        use_imperial,
+        now,
+    ):
         """List remaining challenges for this month."""
         month_data = data.get(month_key)
         if not month_data:
@@ -782,18 +1044,18 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
                 if start <= day:
                     names.append("%s through %s" % (name, _ordinal_date_string(end_dt)))
                 else:
-                    names.append("%s starting %s" % (name, _ordinal_date_string(start_dt)))
+                    names.append(
+                        "%s starting %s" % (name, _ordinal_date_string(start_dt))
+                    )
 
             if names:
-                speak = "The remaining %s this month are: %s." % (label, ", then ".join(names))
+                speak = "The remaining %s this month are: %s." % (
+                    label,
+                    ", then ".join(names),
+                )
                 if _needs_ssml(speak):
                     speak = "<speak>" + speak + "</speak>"
-                return (
-                    handler_input.response_builder
-                        .speak(speak)
-                        .ask(" ")
-                        .response
-                )
+                return handler_input.response_builder.speak(speak).ask(" ").response
 
         speak = "I don't have challenge data for this month."
         return handler_input.response_builder.speak(speak).ask(" ").response
@@ -827,12 +1089,7 @@ class WeeklyChallengeIntentHandler(AbstractRequestHandler):
                 speak = "Next month's %s are: %s." % (label, ", then ".join(names))
                 if _needs_ssml(speak):
                     speak = "<speak>" + speak + "</speak>"
-                return (
-                    handler_input.response_builder
-                        .speak(speak)
-                        .ask(" ")
-                        .response
-                )
+                return handler_input.response_builder.speak(speak).ask(" ").response
 
         speak = "I don't have next month's challenge schedule yet."
         return handler_input.response_builder.speak(speak).ask(" ").response
@@ -854,6 +1111,7 @@ def _ordinal_suffix(day_num):
 
 class ZwiftTimeIntentHandler(AbstractRequestHandler):
     """Handler for Zwift Time Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("ZwiftTimeIntent")(handler_input)
@@ -865,15 +1123,15 @@ class ZwiftTimeIntentHandler(AbstractRequestHandler):
         speak_output = "In Eastern time, the day is " + str(day)
 
         return (
-            handler_input.response_builder
-                .speak(speak_output)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
-                .response
+            handler_input.response_builder.speak(speak_output)
+            # .ask("add a reprompt if you want to keep the session open for the user to respond")
+            .response
         )
 
 
 class NextWorldIntentHandler(AbstractRequestHandler):
     """Handler for Next World Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("NextWorldIntent")(handler_input)
@@ -887,34 +1145,81 @@ class NextWorldIntentHandler(AbstractRequestHandler):
         now, day, midnight, last_day = _get_time_state()
 
         # Determine if the world will change from the current world before the end of the month
-        nextDay = day+1
-        while ((nextDay <= last_day) and (worldList[nextDay] == worldList[day])):
-            nextDay+=1
+        nextDay = day + 1
+        while (nextDay <= last_day) and (worldList[nextDay] == worldList[day]):
+            nextDay += 1
 
-        if (nextDay > last_day):
-            speak_output = "I don't know next month's schedule yet. " + worldList[day] + " are available today."
-        elif (worldList[nextDay] == worldList[day]):
-            speak_output = worldList[nextDay] + "will be active through the end of this month."
+        if nextDay > last_day:
+            if nextMonthWorldList is not None and len(nextMonthWorldList) > 1:
+                lookup = 1
+                while (
+                    lookup < len(nextMonthWorldList)
+                    and nextMonthWorldList[lookup] == worldList[day]
+                ):
+                    lookup += 1
+
+                if lookup >= len(nextMonthWorldList):
+                    speak_output = (
+                        "I don't know next month's schedule yet. "
+                        + worldList[day]
+                        + " are available today."
+                    )
+                else:
+                    days_until = (last_day - day) + lookup
+                    speak_output = (
+                        "The next worlds will be "
+                        + nextMonthWorldList[lookup]
+                        + ". They will be available "
+                    )
+                    if days_until == 1:
+                        delta = midnight - now
+                        speak_output += (
+                            " in "
+                            + str(delta.seconds // 3600)
+                            + " hours and "
+                            + str((delta.seconds // 60) % 60)
+                            + " minutes."
+                        )
+                    elif days_until == 2:
+                        speak_output += "in two days."
+                    else:
+                        speak_output += str(days_until) + " days from now."
+            else:
+                speak_output = (
+                    "I don't know next month's schedule yet. "
+                    + worldList[day]
+                    + " are available today."
+                )
+        elif worldList[nextDay] == worldList[day]:
+            speak_output = (
+                worldList[nextDay] + "will be active through the end of this month."
+            )
         else:
-            speak_output = "The next worlds will be " + worldList[nextDay] + ". They will be available "
+            speak_output = (
+                "The next worlds will be "
+                + worldList[nextDay]
+                + ". They will be available "
+            )
             if nextDay - day == 1:
                 delta = midnight - now
-                speak_output += " in " + str(delta.seconds//3600) + " hours and " + str((delta.seconds//60) % 60) + " minutes."
-            elif nextDay-day == 2:
+                speak_output += (
+                    " in "
+                    + str(delta.seconds // 3600)
+                    + " hours and "
+                    + str((delta.seconds // 60) % 60)
+                    + " minutes."
+                )
+            elif nextDay - day == 2:
                 speak_output += "in two days."
             else:
-                speak_output += str(nextDay-day) + " days from now."
+                speak_output += str(nextDay - day) + " days from now."
 
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(" ")
-                .response
-        )
+        return handler_input.response_builder.speak(speak_output).ask(" ").response
 
 
 class HelpIntentHandler(AbstractRequestHandler):
     """Handler for Help Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
@@ -924,33 +1229,31 @@ class HelpIntentHandler(AbstractRequestHandler):
         speak_output = "You can say, what are today's guest worlds? Where can I ride tomorrow? What's available this weekend? What's Next? Or, when can I run in London?"
 
         return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(speak_output)
-                .response
+            handler_input.response_builder.speak(speak_output)
+            .ask(speak_output)
+            .response
         )
 
 
 class CancelOrStopIntentHandler(AbstractRequestHandler):
     """Single handler for Cancel and Stop Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
-        return (ask_utils.is_intent_name("AMAZON.CancelIntent")(handler_input) or
-                ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input))
+        return ask_utils.is_intent_name("AMAZON.CancelIntent")(
+            handler_input
+        ) or ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input)
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
         speak_output = "Goodbye!"
 
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .response
-        )
+        return handler_input.response_builder.speak(speak_output).response
 
 
 class SessionEndedRequestHandler(AbstractRequestHandler):
     """Handler for Session End."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_request_type("SessionEndedRequest")(handler_input)
@@ -969,6 +1272,7 @@ class IntentReflectorHandler(AbstractRequestHandler):
     for your intents by defining them above, then also adding them to the request
     handler chain below.
     """
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_request_type("IntentRequest")(handler_input)
@@ -979,10 +1283,9 @@ class IntentReflectorHandler(AbstractRequestHandler):
         speak_output = "You just triggered " + intent_name + "."
 
         return (
-            handler_input.response_builder
-                .speak(speak_output)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
-                .response
+            handler_input.response_builder.speak(speak_output)
+            # .ask("add a reprompt if you want to keep the session open for the user to respond")
+            .response
         )
 
 
@@ -991,6 +1294,7 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
     stating the request handler chain is not found, you have not implemented a handler for
     the intent being invoked or included it in the skill builder below.
     """
+
     def can_handle(self, handler_input, exception):
         # type: (HandlerInput, Exception) -> bool
         return True
@@ -1002,11 +1306,11 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
         speak_output = "Sorry, I had trouble doing what you asked. Please try again."
 
         return (
-            handler_input.response_builder
-                .speak(speak_output)
-                .ask(speak_output)
-                .response
+            handler_input.response_builder.speak(speak_output)
+            .ask(speak_output)
+            .response
         )
+
 
 # The SkillBuilder object acts as the entry point for your skill, routing all request and response
 # payloads to the handlers above. Make sure any new handlers or interceptors you've
@@ -1027,7 +1331,9 @@ sb.add_request_handler(NextWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
-sb.add_request_handler(IntentReflectorHandler()) # make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
+sb.add_request_handler(
+    IntentReflectorHandler()
+)  # make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
 
 sb.add_exception_handler(CatchAllExceptionHandler())
 

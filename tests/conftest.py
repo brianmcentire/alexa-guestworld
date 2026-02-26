@@ -71,40 +71,75 @@ for _row in SAMPLE_CSV.strip().split("\n"):
 SAMPLE_CHALLENGE_JSON = {
     "2026-02": {
         "1": {
-            "route": {"name": "Legends and Lava", "xp": 500,
-                      "distance_km": 22.5, "distance_mi": 14.0,
-                      "elevation_m": 350, "elevation_ft": 1148},
-            "climb": {"name": "Hardknott Pass", "xp": 250,
-                      "distance_km": 5.0, "distance_mi": 3.1,
-                      "elevation_m": 200, "elevation_ft": 656},
+            "route": {
+                "name": "Legends and Lava",
+                "xp": 500,
+                "distance_km": 22.5,
+                "distance_mi": 14.0,
+                "elevation_m": 350,
+                "elevation_ft": 1148,
+            },
+            "climb": {
+                "name": "Hardknott Pass",
+                "xp": 250,
+                "distance_km": 5.0,
+                "distance_mi": 3.1,
+                "elevation_m": 200,
+                "elevation_ft": 656,
+            },
         },
         "8": {
-            "route": {"name": "Tick Tock", "xp": 600,
-                      "distance_km": 40.0, "distance_mi": 24.9,
-                      "elevation_m": 500, "elevation_ft": 1640},
-            "climb": {"name": "Côte de Pike", "xp": 250,
-                      "name_ssml": '<phoneme alphabet="ipa" ph="koʊt də paɪk">Côte de Pike</phoneme>',
-                      "distance_km": 1.2, "distance_mi": 0.7,
-                      "elevation_m": 89, "elevation_ft": 292},
+            "route": {
+                "name": "Tick Tock",
+                "xp": 600,
+                "distance_km": 40.0,
+                "distance_mi": 24.9,
+                "elevation_m": 500,
+                "elevation_ft": 1640,
+            },
+            "climb": {
+                "name": "Côte de Pike",
+                "xp": 250,
+                "name_ssml": '<phoneme alphabet="ipa" ph="koʊt də paɪk">Côte de Pike</phoneme>',
+                "distance_km": 1.2,
+                "distance_mi": 0.7,
+                "elevation_m": 89,
+                "elevation_ft": 292,
+            },
         },
         "15": {
             "route": {"name": "Waisted 8", "xp": 500},
             "climb": {"name": "Mountain Peak", "xp": 300},
         },
         "22": {
-            "route": {"name": "Road to Ruins", "xp": 550,
-                      "distance_km": 30.0, "distance_mi": 18.6,
-                      "elevation_m": 400, "elevation_ft": 1312},
-            "climb": {"name": "Alpe du Zwift", "xp": 350,
-                      "distance_km": 12.2, "distance_mi": 7.6,
-                      "elevation_m": 1036, "elevation_ft": 3399},
+            "route": {
+                "name": "Road to Ruins",
+                "xp": 550,
+                "distance_km": 30.0,
+                "distance_mi": 18.6,
+                "elevation_m": 400,
+                "elevation_ft": 1312,
+            },
+            "climb": {
+                "name": "Alpe du Zwift",
+                "xp": 350,
+                "distance_km": 12.2,
+                "distance_mi": 7.6,
+                "elevation_m": 1036,
+                "elevation_ft": 3399,
+            },
         },
     },
     "2026-03": {
         "1": {
-            "route": {"name": "March Route", "xp": 500,
-                      "distance_km": 25.0, "distance_mi": 15.5,
-                      "elevation_m": 300, "elevation_ft": 984},
+            "route": {
+                "name": "March Route",
+                "xp": 500,
+                "distance_km": 25.0,
+                "distance_mi": 15.5,
+                "elevation_m": 300,
+                "elevation_ft": 984,
+            },
             "climb": {"name": "March Climb", "xp": 250},
         },
         "8": {
@@ -168,28 +203,48 @@ def set_lambda_globals():
         set_lambda_globals(day=5, lastDayOfMonth=31, challengeData=challenge_data)
     """
 
+    _missing = object()
+
     original_world_list = lambda_function.worldList
+    original_next_month_world_list = getattr(
+        lambda_function, "nextMonthWorldList", None
+    )
     original_challenge_data = lambda_function.challengeData
     patchers = []
 
-    def _set(day=1, lastDayOfMonth=31, worldList=None, challengeData=None,
-             nowInEastern=None, midnightInEastern=None):
+    def _set(
+        day=1,
+        lastDayOfMonth=31,
+        worldList=None,
+        nextMonthWorldList=_missing,
+        challengeData=None,
+        nowInEastern=None,
+        midnightInEastern=None,
+    ):
         if worldList is not None:
             lambda_function.worldList = worldList
+        if nextMonthWorldList is _missing:
+            lambda_function.nextMonthWorldList = None
+        else:
+            lambda_function.nextMonthWorldList = nextMonthWorldList
         if challengeData is not None:
             lambda_function.challengeData = challengeData
         now = nowInEastern or datetime(2025, 1, day, 12, 0, 0)
         midnight = midnightInEastern or (now + timedelta(days=1)).replace(
-            hour=0, minute=0, second=0)
+            hour=0, minute=0, second=0
+        )
         patcher = patch.object(
-            lambda_function, '_get_time_state',
-            return_value=(now, day, midnight, lastDayOfMonth))
+            lambda_function,
+            "_get_time_state",
+            return_value=(now, day, midnight, lastDayOfMonth),
+        )
         patcher.start()
         patchers.append(patcher)
 
     yield _set
 
     lambda_function.worldList = original_world_list
+    lambda_function.nextMonthWorldList = original_next_month_world_list
     lambda_function.challengeData = original_challenge_data
     for p in patchers:
         p.stop()
@@ -205,6 +260,7 @@ def world_list():
 def challenge_data():
     """Pre-built challengeData from SAMPLE_CHALLENGE_JSON."""
     import copy
+
     return copy.deepcopy(SAMPLE_CHALLENGE_JSON)
 
 
@@ -224,10 +280,17 @@ def mock_handler_input():
         locale – request locale string (default "en-US")
     """
 
-    def _build(intent_name=None, request_type=None, slot_value=None,
-               slot_resolution_fails=False, date_slot_value=None,
-               challenge_type=None, challenge_detail=None,
-               challenge_timeframe=None, locale="en-US"):
+    def _build(
+        intent_name=None,
+        request_type=None,
+        slot_value=None,
+        slot_resolution_fails=False,
+        date_slot_value=None,
+        challenge_type=None,
+        challenge_detail=None,
+        challenge_timeframe=None,
+        locale="en-US",
+    ):
         from ask_sdk_model import Intent, IntentRequest
 
         hi = MagicMock()
@@ -246,8 +309,7 @@ def mock_handler_input():
             # We mock the slots dict to support this chain.
             if slot_value is not None:
                 slot = MagicMock()
-                slot.resolutions.resolutions_per_authority.__getitem__.return_value \
-                    .values.__getitem__.return_value.value.name = slot_value
+                slot.resolutions.resolutions_per_authority.__getitem__.return_value.values.__getitem__.return_value.value.name = slot_value
                 intent_obj.slots = {"GuestWorldName": slot}
             elif slot_resolution_fails:
                 slot = MagicMock()
@@ -263,16 +325,21 @@ def mock_handler_input():
                 intent_obj.slots["requestedDate"] = date_slot
 
             # For WeeklyChallengeIntent, set challenge slots
-            if challenge_type is not None or challenge_detail is not None or challenge_timeframe is not None:
+            if (
+                challenge_type is not None
+                or challenge_detail is not None
+                or challenge_timeframe is not None
+            ):
                 if intent_obj.slots is None:
                     intent_obj.slots = {}
-                for slot_name, slot_val in [("challengeType", challenge_type),
-                                             ("challengeDetail", challenge_detail),
-                                             ("challengeTimeframe", challenge_timeframe)]:
+                for slot_name, slot_val in [
+                    ("challengeType", challenge_type),
+                    ("challengeDetail", challenge_detail),
+                    ("challengeTimeframe", challenge_timeframe),
+                ]:
                     if slot_val is not None:
                         s = MagicMock()
-                        s.resolutions.resolutions_per_authority.__getitem__.return_value \
-                            .values.__getitem__.return_value.value.name = slot_val
+                        s.resolutions.resolutions_per_authority.__getitem__.return_value.values.__getitem__.return_value.value.name = slot_val
                         intent_obj.slots[slot_name] = s
                     else:
                         s = MagicMock()

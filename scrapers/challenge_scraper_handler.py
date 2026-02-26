@@ -26,15 +26,152 @@ S3_BUCKET = "guestworldskill"
 
 # Abbreviated month names for calendar URL query params
 _MONTH_ABBRS = {
-    1: "jan", 2: "feb", 3: "mar", 4: "apr", 5: "may", 6: "jun",
-    7: "jul", 8: "aug", 9: "sep", 10: "oct", 11: "nov", 12: "dec",
+    1: "jan",
+    2: "feb",
+    3: "mar",
+    4: "apr",
+    5: "may",
+    6: "jun",
+    7: "jul",
+    8: "aug",
+    9: "sep",
+    10: "oct",
+    11: "nov",
+    12: "dec",
 }
+
+
+def _previous_month_year(year, month):
+    """Return (year, month) for the month immediately before inputs."""
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
+
+
+def _normalize_name(name):
+    """Normalize route/climb names for cache lookups."""
+    return " ".join((name or "").strip().casefold().split())
+
+
+def _extract_detail_fields(entry):
+    """Extract cached distance/elevation fields from a challenge entry."""
+    detail = {}
+    for key in ("distance_km", "distance_mi", "elevation_m", "elevation_ft"):
+        if key in entry:
+            detail[key] = entry[key]
+    return detail if detail else None
+
+
+def _build_detail_cache_from_json(payload):
+    """Build a name-keyed detail cache from stored challenge JSON payload."""
+    cache = {}
+    if not isinstance(payload, dict):
+        return cache
+
+    for _, month_data in payload.items():
+        if not isinstance(month_data, dict):
+            continue
+        for _, day_data in month_data.items():
+            if not isinstance(day_data, dict):
+                continue
+            for category in ("route", "climb"):
+                entry = day_data.get(category)
+                if not isinstance(entry, dict):
+                    continue
+                name = entry.get("name")
+                detail = _extract_detail_fields(entry)
+                if name and detail:
+                    norm = _normalize_name(name)
+                    if norm and norm not in cache:
+                        cache[norm] = detail
+    return cache
+
+
+def _load_detail_cache_from_s3(s3_client, current_year, current_month):
+    """Load cached route/climb detail fields from recent challenge JSON objects."""
+    keys = ["WeeklyChallenges.json"]
+
+    prev1_year, prev1_month = _previous_month_year(current_year, current_month)
+    prev2_year, prev2_month = _previous_month_year(prev1_year, prev1_month)
+    keys.append("WeeklyChallenges%04d%02d.json" % (prev1_year, prev1_month))
+    keys.append("WeeklyChallenges%04d%02d.json" % (prev2_year, prev2_month))
+
+    cache = {}
+    for key in keys:
+        try:
+            response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+            body = response["Body"].read().decode("utf-8")
+            payload = json.loads(body)
+            loaded = _build_detail_cache_from_json(payload)
+            for name_key, detail in loaded.items():
+                if name_key not in cache:
+                    cache[name_key] = detail
+            logger.info("Loaded %d cached entries from %s", len(loaded), key)
+        except Exception:
+            logger.info("No usable cache data from %s", key)
+
+    return cache
+
+
+def _extract_month_keys(payload):
+    """Return sorted valid month keys present in challenge payload JSON."""
+    if not isinstance(payload, dict):
+        return []
+
+    keys = []
+    for key, value in payload.items():
+        if not isinstance(value, dict):
+            continue
+        if len(key) == 7 and key[4] == "-" and key[:4].isdigit() and key[5:7].isdigit():
+            month_num = int(key[5:7])
+            if 1 <= month_num <= 12:
+                keys.append(key)
+    return sorted(set(keys))
+
+
+def _is_regression_against_existing(existing_payload, new_payload):
+    """True when new payload has fewer month keys than existing payload."""
+    existing_months = set(_extract_month_keys(existing_payload))
+    new_months = set(_extract_month_keys(new_payload))
+    missing_months = sorted(existing_months - new_months)
+    return (len(missing_months) > 0), missing_months
+
+
+def _safe_write_challenge_json(s3_client, key, json_content, challenge_json):
+    """Write S3 object only if it does not reduce month coverage vs existing."""
+    try:
+        existing_response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+        existing_payload = json.loads(existing_response["Body"].read().decode("utf-8"))
+        is_regression, missing_months = _is_regression_against_existing(
+            existing_payload, challenge_json
+        )
+        if is_regression:
+            logger.warning(
+                "Skipping write to %s because new data is missing existing months: %s",
+                key,
+                ", ".join(missing_months),
+            )
+            return False
+    except Exception:
+        # No existing object (or unreadable object) is treated as safe to write.
+        pass
+
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=key,
+        Body=json_content,
+        ContentType="application/json",
+        ACL="public-read",
+    )
+    return True
 
 
 def lambda_handler(event, context):
     # Read challenges calendar URL from SSM
     ssm = boto3.client("ssm", region_name="us-east-1")
-    base_url = ssm.get_parameter(Name="/guestworld/challenges-url")["Parameter"]["Value"]
+    base_url = ssm.get_parameter(Name="/guestworld/challenges-url")["Parameter"][
+        "Value"
+    ]
 
     now = datetime.utcnow()
     current_month = now.month
@@ -54,33 +191,54 @@ def lambda_handler(event, context):
     page_current.raise_for_status()
     days_current = parse_challenge_calendar_html(page_current.content)
 
-    # Fetch next month
-    next_month_url = "%s?month=%s&yr=%d" % (base_url, _MONTH_ABBRS[next_month], next_year)
+    # Fetch next month (best effort)
+    next_month_url = "%s?month=%s&yr=%d" % (
+        base_url,
+        _MONTH_ABBRS[next_month],
+        next_year,
+    )
     logger.info("Fetching next month calendar: %s", _MONTH_ABBRS[next_month])
-    page_next = requests.get(next_month_url, timeout=30)
-    page_next.raise_for_status()
-    days_next = parse_challenge_calendar_html(page_next.content)
+    days_next = []
+    try:
+        page_next = requests.get(next_month_url, timeout=30)
+        page_next.raise_for_status()
+        days_next = parse_challenge_calendar_html(page_next.content)
+    except Exception:
+        logger.warning("Unable to fetch next month challenge calendar", exc_info=True)
+        days_next = []
 
     if not days_current and not days_next:
         raise ValueError("No challenge calendar data found for either month")
 
-    # Collect unique detail URLs from both months
-    detail_urls = set()
+    # Load persistent route/climb detail cache from current + recent S3 JSON
+    s3 = boto3.client("s3")
+    detail_cache_by_name = _load_detail_cache_from_s3(s3, current_year, current_month)
+
+    # Collect unique detail URLs from both months, mapped to challenge names
+    detail_urls = {}
     for _, challenges in days_current + days_next:
         for category in ("route", "climb"):
             if category in challenges:
                 url = challenges[category].get("detail_url")
                 if url:
-                    detail_urls.add(url)
+                    detail_urls[url] = challenges[category].get("name", "")
 
     # Fetch route detail pages
     route_details = {}
-    for url in detail_urls:
+    cache_hits = 0
+    for url, name in detail_urls.items():
+        cached_detail = detail_cache_by_name.get(_normalize_name(name))
+        if cached_detail:
+            route_details[url] = cached_detail
+            cache_hits += 1
+            continue
+
         try:
             # Detail URLs may be relative — resolve against base
             if url.startswith("/"):
                 # Extract base domain from base_url
                 from urllib.parse import urljoin
+
                 full_url = urljoin(base_url, url)
             else:
                 full_url = url
@@ -91,6 +249,12 @@ def lambda_handler(event, context):
         except Exception:
             logger.warning("Failed to fetch detail page: %s", url, exc_info=True)
             route_details[url] = None
+
+    logger.info(
+        "Detail cache hits: %d of %d unique detail URLs",
+        cache_hits,
+        len(detail_urls),
+    )
 
     # Build combined JSON
     current_key = "%04d-%02d" % (current_year, current_month)
@@ -105,18 +269,31 @@ def lambda_handler(event, context):
     challenge_json = build_challenge_json(days_by_month, route_details)
     json_content = json.dumps(challenge_json, ensure_ascii=False)
 
-    # Write to S3
-    s3 = boto3.client("s3")
-    s3.put_object(Bucket=S3_BUCKET, Key="WeeklyChallenges.json",
-                  Body=json_content, ContentType="application/json", ACL="public-read")
+    # Write to S3, but avoid overwriting with reduced month coverage.
+    wrote_keys = []
+    skipped_keys = []
+
+    if _safe_write_challenge_json(
+        s3, "WeeklyChallenges.json", json_content, challenge_json
+    ):
+        wrote_keys.append("WeeklyChallenges.json")
+    else:
+        skipped_keys.append("WeeklyChallenges.json")
+
     archive_key = "WeeklyChallenges%04d%02d.json" % (current_year, current_month)
-    s3.put_object(Bucket=S3_BUCKET, Key=archive_key,
-                  Body=json_content, ContentType="application/json", ACL="public-read")
+    if _safe_write_challenge_json(s3, archive_key, json_content, challenge_json):
+        wrote_keys.append(archive_key)
+    else:
+        skipped_keys.append(archive_key)
 
     months = [k for k in [current_key, next_key] if k in days_by_month]
     return {
         "statusCode": 200,
         "routes_scraped": len(detail_urls),
+        "detail_cache_hits": cache_hits,
         "months": months,
         "archive_key": archive_key,
+        "next_month_available": bool(days_next),
+        "wrote_keys": wrote_keys,
+        "skipped_keys": skipped_keys,
     }

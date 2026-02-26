@@ -20,54 +20,84 @@ def _build_challenge_html(day_entries):
     for day_num, entries in sorted(day_entries, key=lambda x: x[0]):
         events = []
         for entry in entries:
-            cat_class = "category_367" if entry["category"] == "route" else "category_370"
+            cat_class = (
+                "category_367" if entry["category"] == "route" else "category_370"
+            )
             url = entry.get("url", "#")
             events.append(
                 '<span class="calnk"><span class="calnk-link">'
                 '<span class="calnk-box %s">'
                 '<a href="%s"><span class="spiffy-title">%s (%dXP)</span></a>'
-                '</span></span></span>'
-                % (cat_class, url, entry["name"], entry["xp"])
+                "</span></span></span>" % (cat_class, url, entry["name"], entry["xp"])
             )
         cells.append(
             '<td class="spiffy-day-%d day-with-date">'
             '<span class="day-number">%d</span>'
             '<span class="spiffy-event-group">%s</span>'
-            '</td>' % (day_num, day_num, "".join(events))
+            "</td>" % (day_num, day_num, "".join(events))
         )
     rows = "<tr>" + "".join(cells) + "</tr>"
-    return '<html><body><table class="spiffy calendar-table bigcal">%s</table></body></html>' % rows
+    return (
+        '<html><body><table class="spiffy calendar-table bigcal">%s</table></body></html>'
+        % rows
+    )
 
 
 def _build_detail_html(distance_km, distance_mi, elevation_m, elevation_ft):
     """Build minimal route detail page HTML."""
     return (
-        '<html><body>'
-        '<p>Distance: %.1f km (%.1f miles)</p>'
-        '<p>Elevation: %d m (%d ft)</p>'
-        '</body></html>' % (distance_km, distance_mi, elevation_m, elevation_ft)
+        "<html><body>"
+        "<p>Distance: %.1f km (%.1f miles)</p>"
+        "<p>Elevation: %d m (%d ft)</p>"
+        "</body></html>" % (distance_km, distance_mi, elevation_m, elevation_ft)
     )
 
 
 class TestChallengeLambdaHappyPath:
     def test_scrapes_two_months_and_detail_pages(self):
         """Lambda scrapes both months, fetches detail pages, writes JSON to S3."""
-        current_html = _build_challenge_html([
-            (1, [
-                {"name": "Legends and Lava", "xp": 500, "category": "route",
-                 "url": "/route/legends/"},
-                {"name": "Hardknott Pass", "xp": 250, "category": "climb",
-                 "url": "/portal/hardknott/"},
-            ]),
-        ])
-        next_html = _build_challenge_html([
-            (1, [
-                {"name": "Tick Tock", "xp": 600, "category": "route",
-                 "url": "/route/tick-tock/"},
-                {"name": "Mountain Peak", "xp": 300, "category": "climb",
-                 "url": "/portal/mountain/"},
-            ]),
-        ])
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Legends and Lava",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/legends/",
+                        },
+                        {
+                            "name": "Hardknott Pass",
+                            "xp": 250,
+                            "category": "climb",
+                            "url": "/portal/hardknott/",
+                        },
+                    ],
+                ),
+            ]
+        )
+        next_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Tick Tock",
+                            "xp": 600,
+                            "category": "route",
+                            "url": "/route/tick-tock/",
+                        },
+                        {
+                            "name": "Mountain Peak",
+                            "xp": 300,
+                            "category": "climb",
+                            "url": "/portal/mountain/",
+                        },
+                    ],
+                ),
+            ]
+        )
         detail_html = _build_detail_html(22.5, 14.0, 350, 1148)
 
         mock_ssm = MagicMock()
@@ -96,9 +126,15 @@ class TestChallengeLambdaHappyPath:
 
         fake_now = datetime(2026, 2, 10)
 
-        with patch("challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("challenge_scraper_handler.requests.get", side_effect=mock_requests_get), \
-             patch("challenge_scraper_handler.datetime") as mock_dt:
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
             mock_dt.utcnow.return_value = fake_now
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
 
@@ -128,12 +164,21 @@ class TestChallengeLambdaHappyPath:
 class TestChallengeLambdaDetailFailure:
     def test_graceful_degradation_on_detail_failure(self):
         """When detail page fetch fails, name+XP are still written."""
-        current_html = _build_challenge_html([
-            (1, [
-                {"name": "Legends", "xp": 500, "category": "route",
-                 "url": "/route/legends/"},
-            ]),
-        ])
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Legends",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/legends/",
+                        },
+                    ],
+                ),
+            ]
+        )
         next_html = _build_challenge_html([])  # empty next month
 
         mock_ssm = MagicMock()
@@ -162,9 +207,15 @@ class TestChallengeLambdaDetailFailure:
 
         fake_now = datetime(2026, 2, 10)
 
-        with patch("challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("challenge_scraper_handler.requests.get", side_effect=mock_requests_get), \
-             patch("challenge_scraper_handler.datetime") as mock_dt:
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
             mock_dt.utcnow.return_value = fake_now
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
 
@@ -183,10 +234,10 @@ class TestChallengeLambdaEmptyCalendar:
     def test_raises_value_error(self):
         """Empty calendar for both months raises ValueError."""
         empty_html = (
-            '<html><body>'
+            "<html><body>"
             '<table class="spiffy calendar-table bigcal">'
             '<tr><td class="no-date"></td></tr>'
-            '</table></body></html>'
+            "</table></body></html>"
         ).encode("utf-8")
 
         mock_ssm = MagicMock()
@@ -201,9 +252,13 @@ class TestChallengeLambdaEmptyCalendar:
         mock_resp.content = empty_html
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("challenge_scraper_handler.requests.get", return_value=mock_resp), \
-             patch("challenge_scraper_handler.datetime") as mock_dt:
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch("challenge_scraper_handler.requests.get", return_value=mock_resp),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
             mock_dt.utcnow.return_value = datetime(2026, 2, 10)
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
 
@@ -224,21 +279,47 @@ class TestChallengeLambdaHTTPError:
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = HTTPError("500 Server Error")
 
-        with patch("challenge_scraper_handler.boto3.client", return_value=mock_ssm), \
-             patch("challenge_scraper_handler.requests.get", return_value=mock_response), \
-             pytest.raises(HTTPError):
+        with (
+            patch("challenge_scraper_handler.boto3.client", return_value=mock_ssm),
+            patch("challenge_scraper_handler.requests.get", return_value=mock_response),
+            pytest.raises(HTTPError),
+        ):
             lambda_handler({}, None)
 
 
 class TestChallengeLambdaDecemberRollover:
     def test_december_rolls_to_next_year(self):
         """In December, next month is January of next year."""
-        current_html = _build_challenge_html([
-            (1, [{"name": "Dec Route", "xp": 500, "category": "route", "url": "/route/dec/"}]),
-        ])
-        next_html = _build_challenge_html([
-            (1, [{"name": "Jan Route", "xp": 600, "category": "route", "url": "/route/jan/"}]),
-        ])
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Dec Route",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/dec/",
+                        }
+                    ],
+                ),
+            ]
+        )
+        next_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Jan Route",
+                            "xp": 600,
+                            "category": "route",
+                            "url": "/route/jan/",
+                        }
+                    ],
+                ),
+            ]
+        )
 
         mock_ssm = MagicMock()
         mock_ssm.get_parameter.return_value = {
@@ -268,9 +349,15 @@ class TestChallengeLambdaDecemberRollover:
 
         fake_now = datetime(2026, 12, 20)
 
-        with patch("challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client), \
-             patch("challenge_scraper_handler.requests.get", side_effect=mock_requests_get), \
-             patch("challenge_scraper_handler.datetime") as mock_dt:
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
             mock_dt.utcnow.return_value = fake_now
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
 
@@ -279,3 +366,314 @@ class TestChallengeLambdaDecemberRollover:
         assert "2026-12" in result["months"]
         assert "2027-01" in result["months"]
         assert result["archive_key"] == "WeeklyChallenges202612.json"
+
+
+class TestChallengeLambdaDetailCache:
+    def test_reuses_cached_route_details_from_recent_s3_json(self):
+        """Cached detail fields avoid refetching route detail pages."""
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Legends and Lava",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/legends/",
+                        },
+                        {
+                            "name": "Hardknott Pass",
+                            "xp": 250,
+                            "category": "climb",
+                            "url": "/portal/hardknott/",
+                        },
+                    ],
+                ),
+            ]
+        )
+        next_html = _build_challenge_html([])
+
+        # Cache payload includes route/climb detail fields by name
+        cache_payload = {
+            "2026-02": {
+                "1": {
+                    "route": {
+                        "name": "Legends and Lava",
+                        "xp": 500,
+                        "distance_km": 22.5,
+                        "distance_mi": 14.0,
+                        "elevation_m": 350,
+                        "elevation_ft": 1148,
+                    },
+                    "climb": {
+                        "name": "Hardknott Pass",
+                        "xp": 250,
+                        "distance_km": 4.5,
+                        "distance_mi": 2.8,
+                        "elevation_m": 410,
+                        "elevation_ft": 1345,
+                    },
+                }
+            }
+        }
+
+        mock_ssm = MagicMock()
+        mock_ssm.get_parameter.return_value = {
+            "Parameter": {"Value": "https://example.com/challenges"}
+        }
+        mock_s3 = MagicMock()
+
+        def mock_get_object(Bucket, Key):
+            if Key in (
+                "WeeklyChallenges.json",
+                "WeeklyChallenges202601.json",
+                "WeeklyChallenges202512.json",
+            ):
+                return {
+                    "Body": MagicMock(
+                        read=MagicMock(
+                            return_value=json.dumps(cache_payload).encode("utf-8")
+                        )
+                    )
+                }
+            raise KeyError(Key)
+
+        mock_s3.get_object.side_effect = mock_get_object
+
+        def mock_boto3_client(service, **kwargs):
+            if service == "ssm":
+                return mock_ssm
+            if service == "s3":
+                return mock_s3
+            raise ValueError("Unexpected service: %s" % service)
+
+        def mock_requests_get(url, **kwargs):
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            if "month=" in url:
+                resp.content = next_html.encode("utf-8")
+            elif "/route/" in url or "/portal/" in url:
+                raise AssertionError(
+                    "Detail page should not be fetched when cache has detail fields"
+                )
+            else:
+                resp.content = current_html.encode("utf-8")
+            return resp
+
+        fake_now = datetime(2026, 2, 10)
+
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
+            mock_dt.utcnow.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
+            result = lambda_handler({}, None)
+
+        assert result["statusCode"] == 200
+        assert result["detail_cache_hits"] == 2
+
+        # Verify cache checks include previous two months
+        expected_cache_keys = {
+            "WeeklyChallenges.json",
+            "WeeklyChallenges202601.json",
+            "WeeklyChallenges202512.json",
+        }
+        seen_keys = {c.kwargs["Key"] for c in mock_s3.get_object.call_args_list}
+        assert expected_cache_keys.issubset(seen_keys)
+
+        # Ensure output still includes cached fields
+        json_body = json.loads(mock_s3.put_object.call_args_list[0].kwargs["Body"])
+        route = json_body["2026-02"]["1"]["route"]
+        climb = json_body["2026-02"]["1"]["climb"]
+        assert route["distance_km"] == 22.5
+        assert climb["elevation_ft"] == 1345
+
+
+class TestChallengeLambdaNextMonthFetchFailure:
+    def test_next_month_http_error_still_writes_current_month(self):
+        """If next-month calendar fetch fails, current-month output still succeeds."""
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Legends and Lava",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/legends/",
+                        },
+                    ],
+                ),
+            ]
+        )
+        detail_html = _build_detail_html(22.5, 14.0, 350, 1148)
+
+        mock_ssm = MagicMock()
+        mock_ssm.get_parameter.return_value = {
+            "Parameter": {"Value": "https://example.com/challenges"}
+        }
+        mock_s3 = MagicMock()
+
+        def mock_get_object(Bucket, Key):
+            # Cache objects not present yet is a normal case
+            raise KeyError(Key)
+
+        mock_s3.get_object.side_effect = mock_get_object
+
+        def mock_boto3_client(service, **kwargs):
+            if service == "ssm":
+                return mock_ssm
+            if service == "s3":
+                return mock_s3
+            raise ValueError("Unexpected service: %s" % service)
+
+        def mock_requests_get(url, **kwargs):
+            if "month=" in url:
+                from requests.exceptions import HTTPError
+
+                resp = MagicMock()
+                resp.raise_for_status.side_effect = HTTPError("404 Not Found")
+                return resp
+
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            if "/route/" in url or "/portal/" in url:
+                resp.content = detail_html.encode("utf-8")
+            else:
+                resp.content = current_html.encode("utf-8")
+            return resp
+
+        fake_now = datetime(2026, 2, 10)
+
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
+            mock_dt.utcnow.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
+            result = lambda_handler({}, None)
+
+        assert result["statusCode"] == 200
+        assert result["months"] == ["2026-02"]
+        assert result["next_month_available"] is False
+        assert result["archive_key"] == "WeeklyChallenges202602.json"
+
+        # Two writes: primary + current-month archive
+        put_calls = mock_s3.put_object.call_args_list
+        assert len(put_calls) == 2
+        assert put_calls[0].kwargs["Key"] == "WeeklyChallenges.json"
+        assert put_calls[1].kwargs["Key"] == "WeeklyChallenges202602.json"
+
+
+class TestChallengeLambdaRegressionGuard:
+    def test_skips_overwrite_when_new_payload_would_drop_existing_month(self):
+        """Existing two-month payload should not be overwritten by one-month payload."""
+        current_html = _build_challenge_html(
+            [
+                (
+                    1,
+                    [
+                        {
+                            "name": "Legends and Lava",
+                            "xp": 500,
+                            "category": "route",
+                            "url": "/route/legends/",
+                        },
+                    ],
+                ),
+            ]
+        )
+        detail_html = _build_detail_html(22.5, 14.0, 350, 1148)
+
+        # Existing data already has next month coverage.
+        existing_payload = {
+            "2026-02": {"1": {"route": {"name": "Legends and Lava", "xp": 500}}},
+            "2026-03": {"1": {"route": {"name": "Tick Tock", "xp": 600}}},
+        }
+
+        mock_ssm = MagicMock()
+        mock_ssm.get_parameter.return_value = {
+            "Parameter": {"Value": "https://example.com/challenges"}
+        }
+        mock_s3 = MagicMock()
+
+        def mock_get_object(Bucket, Key):
+            if Key in (
+                "WeeklyChallenges.json",
+                "WeeklyChallenges202602.json",
+                "WeeklyChallenges202601.json",
+                "WeeklyChallenges202512.json",
+            ):
+                return {
+                    "Body": MagicMock(
+                        read=MagicMock(
+                            return_value=json.dumps(existing_payload).encode("utf-8")
+                        )
+                    )
+                }
+            raise KeyError(Key)
+
+        mock_s3.get_object.side_effect = mock_get_object
+
+        def mock_boto3_client(service, **kwargs):
+            if service == "ssm":
+                return mock_ssm
+            if service == "s3":
+                return mock_s3
+            raise ValueError("Unexpected service: %s" % service)
+
+        def mock_requests_get(url, **kwargs):
+            if "month=" in url:
+                from requests.exceptions import HTTPError
+
+                resp = MagicMock()
+                resp.raise_for_status.side_effect = HTTPError("404 Not Found")
+                return resp
+
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            if "/route/" in url or "/portal/" in url:
+                resp.content = detail_html.encode("utf-8")
+            else:
+                resp.content = current_html.encode("utf-8")
+            return resp
+
+        fake_now = datetime(2026, 2, 10)
+
+        with (
+            patch(
+                "challenge_scraper_handler.boto3.client", side_effect=mock_boto3_client
+            ),
+            patch(
+                "challenge_scraper_handler.requests.get", side_effect=mock_requests_get
+            ),
+            patch("challenge_scraper_handler.datetime") as mock_dt,
+        ):
+            mock_dt.utcnow.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
+            result = lambda_handler({}, None)
+
+        assert result["statusCode"] == 200
+        assert result["months"] == ["2026-02"]
+        assert result["wrote_keys"] == []
+        assert set(result["skipped_keys"]) == {
+            "WeeklyChallenges.json",
+            "WeeklyChallenges202602.json",
+        }
+        assert len(mock_s3.put_object.call_args_list) == 0

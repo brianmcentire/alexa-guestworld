@@ -11,6 +11,7 @@ import lambda_function
 # LaunchRequestHandler
 # ---------------------------------------------------------------------------
 
+
 class TestLaunchRequestHandler:
     def test_returns_welcome_message(self, mock_handler_input):
         hi = mock_handler_input(request_type="LaunchRequest")
@@ -27,6 +28,7 @@ class TestLaunchRequestHandler:
 # ---------------------------------------------------------------------------
 # TodaysWorldIntentHandler
 # ---------------------------------------------------------------------------
+
 
 class TestTodaysWorldIntentHandler:
     def test_mid_month(self, mock_handler_input, set_lambda_globals, world_list):
@@ -56,6 +58,7 @@ class TestTodaysWorldIntentHandler:
 # ---------------------------------------------------------------------------
 # TomorrowsWorldIntentHandler
 # ---------------------------------------------------------------------------
+
 
 class TestTomorrowsWorldIntentHandler:
     def test_mid_month(self, mock_handler_input, set_lambda_globals, world_list):
@@ -93,13 +96,39 @@ class TestTomorrowsWorldIntentHandler:
         assert "Tomorrow" in spoken
         assert world_list[31] in spoken
 
+    def test_end_of_month_with_next_month_data(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        next_month_world_list = ["IndexZero"] + ["Scotland and New York"] * 31
+        set_lambda_globals(
+            day=31,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+        )
+        hi = mock_handler_input(intent_name="TomorrowsWorldIntent")
+        handler = lambda_function.TomorrowsWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "Tomorrow" in spoken
+        assert "Scotland and New York" in spoken
+        assert hi.attributes_manager.session_attributes["last_answered_day"] == 1
+        assert (
+            hi.attributes_manager.session_attributes["last_answered_month_offset"] == 1
+        )
+
 
 # ---------------------------------------------------------------------------
 # WhenWorldIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestWhenWorldIntentHandler:
-    def test_watopia_always_available(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_watopia_always_available(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Watopia")
         handler = lambda_function.WhenWorldIntentHandler()
@@ -110,9 +139,11 @@ class TestWhenWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "Watopia" in spoken
         assert "every day" in spoken
-        assert 'last_answered_day' not in hi.attributes_manager.session_attributes
+        assert "last_answered_day" not in hi.attributes_manager.session_attributes
 
-    def test_world_available_today(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_available_today(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Day 3 has "Yorkshire and Innsbruck"
         set_lambda_globals(day=3, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
@@ -122,9 +153,11 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available now" in spoken
-        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
+        assert hi.attributes_manager.session_attributes["last_answered_day"] == 3
 
-    def test_world_available_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_available_tomorrow(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Day 2 has "paris", day 3 has "Yorkshire and Innsbruck"
         set_lambda_globals(day=2, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
@@ -134,12 +167,18 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available tomorrow" in spoken
-        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
+        assert hi.attributes_manager.session_attributes["last_answered_day"] == 3
 
-    def test_world_available_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_available_in_n_days(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Day 1 = paris, Yorkshire first appears on day 3 → 2 days away
-        set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 1, 12, 0, 0))
+        set_lambda_globals(
+            day=1,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 1, 12, 0, 0),
+        )
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="Yorkshire")
         handler = lambda_function.WhenWorldIntentHandler()
 
@@ -148,9 +187,11 @@ class TestWhenWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "in 2 days" in spoken
         assert "January the 3rd" in spoken
-        assert hi.attributes_manager.session_attributes['last_answered_day'] == 3
+        assert hi.attributes_manager.session_attributes["last_answered_day"] == 3
 
-    def test_world_not_found_this_month(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_not_found_this_month(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Ask for London starting from day 28 — London doesn't appear after day 24
         set_lambda_globals(day=28, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="London")
@@ -160,9 +201,33 @@ class TestWhenWorldIntentHandler:
 
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "next month" in spoken
-        assert 'last_answered_day' not in hi.attributes_manager.session_attributes
+        assert "last_answered_day" not in hi.attributes_manager.session_attributes
 
-    def test_case_insensitive_match(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_found_in_next_month(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        # London does not appear after day 24 in current month, but appears on day 4 next month.
+        next_month_world_list = ["IndexZero"] + ["Paris"] * 31
+        next_month_world_list[4] = "London and Yorkshire"
+        set_lambda_globals(
+            day=28,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 28, 12, 0, 0),
+        )
+        hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="London")
+        handler = lambda_function.WhenWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "in 7 days" in spoken
+        assert "February the 4th" in spoken
+
+    def test_case_insensitive_match(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # "new york" should match "New York and Richmond" on day 10
         set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="WhenWorldIntent", slot_value="New York")
@@ -173,9 +238,13 @@ class TestWhenWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "available now" in spoken
 
-    def test_slot_resolution_failure(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_slot_resolution_failure(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
-        hi = mock_handler_input(intent_name="WhenWorldIntent", slot_resolution_fails=True)
+        hi = mock_handler_input(
+            intent_name="WhenWorldIntent", slot_resolution_fails=True
+        )
         handler = lambda_function.WhenWorldIntentHandler()
 
         handler.handle(hi)
@@ -188,14 +257,20 @@ class TestWhenWorldIntentHandler:
 # NextWorldIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestNextWorldIntentHandler:
-    def test_world_changes_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_changes_tomorrow(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         now = datetime(2025, 1, 15, 20, 30, 0)
         midnight = datetime(2025, 1, 16, 0, 0, 0)
         # Day 1 and day 2 are both "paris", so set day=2 where day 3 differs
         set_lambda_globals(
-            day=2, lastDayOfMonth=31, worldList=world_list,
-            nowInEastern=now, midnightInEastern=midnight,
+            day=2,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=now,
+            midnightInEastern=midnight,
         )
         hi = mock_handler_input(intent_name="NextWorldIntent")
         handler = lambda_function.NextWorldIntentHandler()
@@ -208,7 +283,9 @@ class TestNextWorldIntentHandler:
         assert "hours" in spoken
         assert "minutes" in spoken
 
-    def test_world_changes_in_two_days(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_changes_in_two_days(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Day 1 and 2 are both "paris", day 3 is different → from day 1, next change is day 3 (2 days)
         set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="NextWorldIntent")
@@ -219,7 +296,9 @@ class TestNextWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "in two days" in spoken
 
-    def test_world_changes_in_n_days(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_world_changes_in_n_days(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Use a custom worldList for a 3-day gap
         custom = list(world_list)
         custom[5] = custom[3]  # Make days 3,4,5 all the same
@@ -244,10 +323,33 @@ class TestNextWorldIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "don't know next month" in spoken
 
+    def test_no_change_until_next_month_then_changes(
+        self, mock_handler_input, set_lambda_globals
+    ):
+        wl = ["IndexZero"] + ["Same World"] * 31
+        next_month_world_list = ["IndexZero", "Same World", "New York and Richmond"]
+        set_lambda_globals(
+            day=31,
+            lastDayOfMonth=31,
+            worldList=wl,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 31, 20, 30, 0),
+            midnightInEastern=datetime(2025, 2, 1, 0, 0, 0),
+        )
+        hi = mock_handler_input(intent_name="NextWorldIntent")
+        handler = lambda_function.NextWorldIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "The next worlds will be New York and Richmond." in spoken
+        assert "in two days" in spoken
+
 
 # ---------------------------------------------------------------------------
 # ZwiftTimeIntentHandler
 # ---------------------------------------------------------------------------
+
 
 class TestZwiftTimeIntentHandler:
     def test_returns_day_number(self, mock_handler_input, set_lambda_globals):
@@ -282,6 +384,7 @@ class TestZwiftTimeIntentHandler:
 # HelpIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestHelpIntentHandler:
     def test_returns_help_text(self, mock_handler_input):
         hi = mock_handler_input(intent_name="AMAZON.HelpIntent")
@@ -297,6 +400,7 @@ class TestHelpIntentHandler:
 # ---------------------------------------------------------------------------
 # CancelOrStopIntentHandler
 # ---------------------------------------------------------------------------
+
 
 class TestCancelOrStopIntentHandler:
     def test_cancel_returns_goodbye(self, mock_handler_input):
@@ -324,35 +428,61 @@ class TestCancelOrStopIntentHandler:
 # _ordinal_date_string
 # ---------------------------------------------------------------------------
 
+
 class TestOrdinalDateString:
     def test_1st(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 1)) == "January the 1st"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 1))
+            == "January the 1st"
+        )
 
     def test_2nd(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 2)) == "January the 2nd"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 2))
+            == "January the 2nd"
+        )
 
     def test_3rd(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 3)) == "January the 3rd"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 3))
+            == "January the 3rd"
+        )
 
     def test_11th(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 11)) == "January the 11th"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 11))
+            == "January the 11th"
+        )
 
     def test_12th(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 12)) == "January the 12th"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 12))
+            == "January the 12th"
+        )
 
     def test_13th(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 13)) == "January the 13th"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 13))
+            == "January the 13th"
+        )
 
     def test_21st(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 21)) == "January the 21st"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 21))
+            == "January the 21st"
+        )
 
     def test_30th(self):
-        assert lambda_function._ordinal_date_string(datetime(2025, 1, 30)) == "January the 30th"
+        assert (
+            lambda_function._ordinal_date_string(datetime(2025, 1, 30))
+            == "January the 30th"
+        )
 
 
 # ---------------------------------------------------------------------------
 # _parse_amazon_date
 # ---------------------------------------------------------------------------
+
 
 class TestParseAmazonDate:
     def test_same_month_date(self):
@@ -414,13 +544,19 @@ class TestParseAmazonDate:
 # WorldOnDateIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestWorldOnDateIntentHandler:
     def test_future_date(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 10, ask about the 15th — "London and Yorkshire"
-        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-01-15")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-01-15"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         assert handler.can_handle(hi)
@@ -432,10 +568,15 @@ class TestWorldOnDateIntentHandler:
 
     def test_today(self, mock_handler_input, set_lambda_globals, world_list):
         # Ask about today (day 5) — "London and Yorkshire"
-        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-01-05")
+        set_lambda_globals(
+            day=5,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 5, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-01-05"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -446,10 +587,15 @@ class TestWorldOnDateIntentHandler:
 
     def test_past_date(self, mock_handler_input, set_lambda_globals, world_list):
         # Day 10, ask about the 3rd — past
-        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-01-03")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-01-03"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -458,7 +604,55 @@ class TestWorldOnDateIntentHandler:
         assert "already passed" in spoken
         assert "available today" in spoken
 
-    def test_weekend_same_worlds(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_past_recurring_date_uses_next_month_when_available(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        next_month_world_list = ["IndexZero"] + ["Paris"] * 31
+        next_month_world_list[4] = "Scotland and New York"
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="XXXX-XX-04"
+        )
+        handler = lambda_function.WorldOnDateIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "February the 4th" in spoken
+        assert "Scotland and New York" in spoken
+
+    def test_explicit_next_month_date_uses_next_month_when_available(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        next_month_world_list = ["IndexZero"] + ["Paris"] * 31
+        next_month_world_list[15] = "Makuri Islands and New York"
+        set_lambda_globals(
+            day=30,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 30, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-02-15"
+        )
+        handler = lambda_function.WorldOnDateIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "February the 15th" in spoken
+        assert "Makuri Islands and New York" in spoken
+
+    def test_weekend_same_worlds(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Week 4 of 2025: Sat=Jan 25, Sun=Jan 26 — both "paris" (day 26) and
         # "Richmond and London" (day 25) — actually check: day 25="Richmond and London",
         # day 26="paris" — different, so use a weekend with same worlds.
@@ -467,10 +661,15 @@ class TestWorldOnDateIntentHandler:
         # Let's use a custom world list for clarity.
         custom = list(world_list)
         custom[11] = custom[12]  # Make Sat/Sun of week 2 the same
-        set_lambda_globals(day=8, lastDayOfMonth=31, worldList=custom,
-                           nowInEastern=datetime(2025, 1, 8, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-W02-WE")
+        set_lambda_globals(
+            day=8,
+            lastDayOfMonth=31,
+            worldList=custom,
+            nowInEastern=datetime(2025, 1, 8, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-W02-WE"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -479,13 +678,20 @@ class TestWorldOnDateIntentHandler:
         assert "Saturday and Sunday" in spoken
         assert custom[11] in spoken
 
-    def test_weekend_different_worlds(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_weekend_different_worlds(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Week 1 of 2025: Sat=Jan 4, Sun=Jan 5
         # Day 4 = "Yorkshire and Innsbruck", day 5 = "London and Yorkshire" → different
-        set_lambda_globals(day=1, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 1, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-W01-WE")
+        set_lambda_globals(
+            day=1,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 1, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-W01-WE"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -496,12 +702,19 @@ class TestWorldOnDateIntentHandler:
         assert "Yorkshire and Innsbruck" in spoken
         assert "London and Yorkshire" in spoken
 
-    def test_weekend_on_sunday(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_weekend_on_sunday(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # Today is Sunday Jan 5, ask "this weekend" → Sat Jan 4 is past, only Sun Jan 5
-        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-W01-WE")
+        set_lambda_globals(
+            day=5,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 5, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-W01-WE"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -512,10 +725,15 @@ class TestWorldOnDateIntentHandler:
         assert "London and Yorkshire" in spoken
 
     def test_next_month_date(self, mock_handler_input, set_lambda_globals, world_list):
-        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-02-15")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-02-15"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -533,12 +751,19 @@ class TestWorldOnDateIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "didn't catch" in spoken
 
-    def test_recurring_day_of_month(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_recurring_day_of_month(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # "the 27th" → XXXX-XX-27 → day 27 = "paris"
-        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="XXXX-XX-27")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="XXXX-XX-27"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -547,12 +772,19 @@ class TestWorldOnDateIntentHandler:
         assert "January the 27th" in spoken
         assert "paris" in spoken
 
-    def test_weekend_single_digit_week(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_weekend_single_digit_week(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         # "next weekend" → 2025-W2-WE (no leading zero) → Sat Jan 11, Sun Jan 12
-        set_lambda_globals(day=8, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 8, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-W2-WE")
+        set_lambda_globals(
+            day=8,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 8, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-W2-WE"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -564,8 +796,9 @@ class TestWorldOnDateIntentHandler:
     def test_data_unavailable(self, mock_handler_input, set_lambda_globals):
         set_lambda_globals(day=10, lastDayOfMonth=31)
         lambda_function.worldList = None
-        hi = mock_handler_input(intent_name="WorldOnDateIntent",
-                                date_slot_value="2025-01-15")
+        hi = mock_handler_input(
+            intent_name="WorldOnDateIntent", date_slot_value="2025-01-15"
+        )
         handler = lambda_function.WorldOnDateIntentHandler()
 
         handler.handle(hi)
@@ -578,21 +811,28 @@ class TestWorldOnDateIntentHandler:
 # AfterThatIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestAfterThatIntentHandler:
     def test_after_today(self, mock_handler_input, set_lambda_globals, world_list):
         """Today → after that skips to next world change."""
-        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
+        set_lambda_globals(
+            day=5,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 5, 12, 0, 0),
+        )
 
         # First ask about today to set session state
         # Day 5 = "London and Yorkshire", day 6 = same, day 7 = "Richmond and London"
         hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
         lambda_function.TodaysWorldIntentHandler().handle(hi_today)
-        assert hi_today.attributes_manager.session_attributes['last_answered_day'] == 5
+        assert hi_today.attributes_manager.session_attributes["last_answered_day"] == 5
 
         # "After that" skips day 6 (same worlds) → day 7
         hi = mock_handler_input(intent_name="AfterThatIntent")
-        hi.attributes_manager.session_attributes = hi_today.attributes_manager.session_attributes
+        hi.attributes_manager.session_attributes = (
+            hi_today.attributes_manager.session_attributes
+        )
         handler = lambda_function.AfterThatIntentHandler()
 
         assert handler.can_handle(hi)
@@ -602,10 +842,16 @@ class TestAfterThatIntentHandler:
         assert world_list[7] in spoken
         assert "January the 7th" in spoken
 
-    def test_chaining_multiple_days(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_chaining_multiple_days(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         """Chaining: today → after that → after that skips to each world change."""
-        set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 5, 12, 0, 0))
+        set_lambda_globals(
+            day=5,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 5, 12, 0, 0),
+        )
 
         handler = lambda_function.AfterThatIntentHandler()
 
@@ -631,10 +877,14 @@ class TestAfterThatIntentHandler:
 
     def test_end_of_month(self, mock_handler_input, set_lambda_globals, world_list):
         """At end of month, responds with schedule unavailable message."""
-        set_lambda_globals(day=31, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 31, 12, 0, 0))
+        set_lambda_globals(
+            day=31,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 31, 12, 0, 0),
+        )
         hi = mock_handler_input(intent_name="AfterThatIntent")
-        hi.attributes_manager.session_attributes = {'last_answered_day': 31}
+        hi.attributes_manager.session_attributes = {"last_answered_day": 31}
         handler = lambda_function.AfterThatIntentHandler()
 
         handler.handle(hi)
@@ -642,7 +892,37 @@ class TestAfterThatIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "don't have next month's schedule" in spoken
 
-    def test_no_previous_context(self, mock_handler_input, set_lambda_globals, world_list):
+    def test_end_of_month_with_next_month_data(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        next_month_world_list = ["IndexZero", "New York and Richmond", "Scotland"]
+        set_lambda_globals(
+            day=31,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 31, 12, 0, 0),
+        )
+        hi = mock_handler_input(intent_name="AfterThatIntent")
+        hi.attributes_manager.session_attributes = {
+            "last_answered_day": 31,
+            "last_answered_month_offset": 0,
+        }
+        handler = lambda_function.AfterThatIntentHandler()
+
+        handler.handle(hi)
+
+        spoken = hi.response_builder.speak.call_args[0][0]
+        assert "February the 2nd" in spoken
+        assert "Scotland" in spoken
+        assert hi.attributes_manager.session_attributes["last_answered_day"] == 2
+        assert (
+            hi.attributes_manager.session_attributes["last_answered_month_offset"] == 1
+        )
+
+    def test_no_previous_context(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
         """Without prior day context, prompts user to ask about a day first."""
         set_lambda_globals(day=5, lastDayOfMonth=31, worldList=world_list)
         hi = mock_handler_input(intent_name="AfterThatIntent")
@@ -655,17 +935,23 @@ class TestAfterThatIntentHandler:
 
     def test_after_tomorrow(self, mock_handler_input, set_lambda_globals, world_list):
         """Tomorrow → after that gives the day after tomorrow's worlds."""
-        set_lambda_globals(day=10, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 10, 12, 0, 0))
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 10, 12, 0, 0),
+        )
 
         # Ask about tomorrow
         hi_tmrw = mock_handler_input(intent_name="TomorrowsWorldIntent")
         lambda_function.TomorrowsWorldIntentHandler().handle(hi_tmrw)
-        assert hi_tmrw.attributes_manager.session_attributes['last_answered_day'] == 11
+        assert hi_tmrw.attributes_manager.session_attributes["last_answered_day"] == 11
 
         # Now "after that" → day 12
         hi = mock_handler_input(intent_name="AfterThatIntent")
-        hi.attributes_manager.session_attributes = hi_tmrw.attributes_manager.session_attributes
+        hi.attributes_manager.session_attributes = (
+            hi_tmrw.attributes_manager.session_attributes
+        )
         lambda_function.AfterThatIntentHandler().handle(hi)
 
         spoken = hi.response_builder.speak.call_args[0][0]
@@ -674,10 +960,14 @@ class TestAfterThatIntentHandler:
 
     def test_penultimate_day(self, mock_handler_input, set_lambda_globals, world_list):
         """After that from day 28 skips to day 30, then next hits end of month."""
-        set_lambda_globals(day=28, lastDayOfMonth=31, worldList=world_list,
-                           nowInEastern=datetime(2025, 1, 28, 12, 0, 0))
+        set_lambda_globals(
+            day=28,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nowInEastern=datetime(2025, 1, 28, 12, 0, 0),
+        )
         # Day 28-29 = "Makuri Islands and New York", day 30-31 = "New York and Richmond"
-        session = {'last_answered_day': 28}
+        session = {"last_answered_day": 28}
         handler = lambda_function.AfterThatIntentHandler()
 
         # Day 28 → skips day 29 (same) → day 30 (works)
@@ -694,11 +984,40 @@ class TestAfterThatIntentHandler:
         spoken2 = hi2.response_builder.speak.call_args[0][0]
         assert "don't have next month's schedule" in spoken2
 
+    def test_penultimate_day_rolls_into_next_month_when_available(
+        self, mock_handler_input, set_lambda_globals, world_list
+    ):
+        next_month_world_list = ["IndexZero", "New York and Richmond", "Scotland"]
+        set_lambda_globals(
+            day=28,
+            lastDayOfMonth=31,
+            worldList=world_list,
+            nextMonthWorldList=next_month_world_list,
+            nowInEastern=datetime(2025, 1, 28, 12, 0, 0),
+        )
+        session = {"last_answered_day": 28, "last_answered_month_offset": 0}
+        handler = lambda_function.AfterThatIntentHandler()
+
+        # First follow-up: day 30 in current month
+        hi1 = mock_handler_input(intent_name="AfterThatIntent")
+        hi1.attributes_manager.session_attributes = session
+        handler.handle(hi1)
+        spoken1 = hi1.response_builder.speak.call_args[0][0]
+        assert world_list[30] in spoken1
+
+        # Second follow-up: next differing worlds in next month
+        hi2 = mock_handler_input(intent_name="AfterThatIntent")
+        hi2.attributes_manager.session_attributes = session
+        handler.handle(hi2)
+        spoken2 = hi2.response_builder.speak.call_args[0][0]
+        assert "February the 2nd" in spoken2
+        assert "Scotland" in spoken2
+
     def test_data_unavailable(self, mock_handler_input, set_lambda_globals):
         set_lambda_globals(day=5, lastDayOfMonth=31)
         lambda_function.worldList = None
         hi = mock_handler_input(intent_name="AfterThatIntent")
-        hi.attributes_manager.session_attributes = {'last_answered_day': 5}
+        hi.attributes_manager.session_attributes = {"last_answered_day": 5}
         handler = lambda_function.AfterThatIntentHandler()
 
         handler.handle(hi)
@@ -706,19 +1025,26 @@ class TestAfterThatIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "temporarily unavailable" in spoken
 
-    def test_after_challenge_route(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_after_challenge_route(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """After challenge route query, shows next week's route."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           worldList=["IndexZero"] + ["paris"] * 31,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            worldList=["IndexZero"] + ["paris"] * 31,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
 
         # Ask about this week's route
-        hi_ch = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                   challenge_type="route of the week")
+        hi_ch = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         lambda_function.WeeklyChallengeIntentHandler().handle(hi_ch)
         session = hi_ch.attributes_manager.session_attributes
-        assert session['last_context'] == 'challenge'
+        assert session["last_context"] == "challenge"
 
         # "After that" → next week's route
         hi = mock_handler_input(intent_name="AfterThatIntent")
@@ -729,16 +1055,23 @@ class TestAfterThatIntentHandler:
         assert "Tick Tock" in spoken
         assert "following week" in spoken
 
-    def test_after_challenge_both(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_after_challenge_both(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """After both-type challenge query, shows both route and climb for next week."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           worldList=["IndexZero"] + ["paris"] * 31,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            worldList=["IndexZero"] + ["paris"] * 31,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
 
         # Ask about both
-        hi_ch = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                   challenge_type="challenge routes")
+        hi_ch = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="challenge routes"
+        )
         lambda_function.WeeklyChallengeIntentHandler().handle(hi_ch)
         session = hi_ch.attributes_manager.session_attributes
 
@@ -751,16 +1084,23 @@ class TestAfterThatIntentHandler:
         assert "Tick Tock" in spoken
         assert "Côte de Pike" in spoken or "phoneme" in spoken
 
-    def test_after_challenge_chaining(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_after_challenge_chaining(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Challenge → after that → after that advances by week each time."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           worldList=["IndexZero"] + ["paris"] * 31,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            worldList=["IndexZero"] + ["paris"] * 31,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
 
         # Ask about this week's route
-        hi_ch = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                   challenge_type="route of the week")
+        hi_ch = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         lambda_function.WeeklyChallengeIntentHandler().handle(hi_ch)
         session = hi_ch.attributes_manager.session_attributes
 
@@ -778,16 +1118,23 @@ class TestAfterThatIntentHandler:
         spoken2 = hi2.response_builder.speak.call_args[0][0]
         assert "Waisted 8" in spoken2
 
-    def test_after_challenge_no_data(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_after_challenge_no_data(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """After challenge query, says no data when next week is out of range."""
         cd = {"2026-02": copy.deepcopy(challenge_data["2026-02"])}  # No March
-        set_lambda_globals(day=22, lastDayOfMonth=28, challengeData=cd,
-                           worldList=["IndexZero"] + ["paris"] * 31,
-                           nowInEastern=datetime(2026, 2, 22, 12, 0, 0))
+        set_lambda_globals(
+            day=22,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            worldList=["IndexZero"] + ["paris"] * 31,
+            nowInEastern=datetime(2026, 2, 22, 12, 0, 0),
+        )
 
         # Ask about this week's route (week starting day 22)
-        hi_ch = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                   challenge_type="route of the week")
+        hi_ch = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         lambda_function.WeeklyChallengeIntentHandler().handle(hi_ch)
         session = hi_ch.attributes_manager.session_attributes
 
@@ -799,25 +1146,32 @@ class TestAfterThatIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "don't have" in spoken
 
-    def test_world_context_after_challenge(self, mock_handler_input, set_lambda_globals, world_list, challenge_data):
+    def test_world_context_after_challenge(
+        self, mock_handler_input, set_lambda_globals, world_list, challenge_data
+    ):
         """World query after challenge resets context; AfterThat uses world logic."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=5, lastDayOfMonth=28, worldList=world_list,
-                           challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 5, 12, 0, 0))
+        set_lambda_globals(
+            day=5,
+            lastDayOfMonth=28,
+            worldList=world_list,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 5, 12, 0, 0),
+        )
 
         # Ask about challenge first
-        hi_ch = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                   challenge_type="route of the week")
+        hi_ch = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         lambda_function.WeeklyChallengeIntentHandler().handle(hi_ch)
         session = hi_ch.attributes_manager.session_attributes
-        assert session['last_context'] == 'challenge'
+        assert session["last_context"] == "challenge"
 
         # Then ask about today's worlds
         hi_today = mock_handler_input(intent_name="TodaysWorldIntent")
         hi_today.attributes_manager.session_attributes = session
         lambda_function.TodaysWorldIntentHandler().handle(hi_today)
-        assert session['last_context'] == 'world'
+        assert session["last_context"] == "world"
 
         # "After that" should use world logic
         hi = mock_handler_input(intent_name="AfterThatIntent")
@@ -832,16 +1186,24 @@ class TestAfterThatIntentHandler:
 # WeeklyChallengeIntentHandler
 # ---------------------------------------------------------------------------
 
+
 class TestWeeklyChallengeIntentHandler:
     """Tests for the WeeklyChallengeIntentHandler."""
 
-    def test_overview_route_only(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_overview_route_only(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Route-only overview returns route name and XP."""
         cd = challenge_data
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         assert handler.can_handle(hi)
@@ -853,13 +1215,20 @@ class TestWeeklyChallengeIntentHandler:
         assert "route" in spoken
         assert "route of the week" not in spoken  # short label avoids redundancy
 
-    def test_overview_climb_only(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_overview_climb_only(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Climb-only overview returns climb name and XP."""
         cd = challenge_data
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="climb of the week")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="climb of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -870,13 +1239,20 @@ class TestWeeklyChallengeIntentHandler:
         assert "climb" in spoken
         assert "climb of the week" not in spoken  # short label avoids redundancy
 
-    def test_overview_both(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_overview_both(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Challenge routes overview returns both route and climb."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="challenge routes")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="challenge routes"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -888,11 +1264,17 @@ class TestWeeklyChallengeIntentHandler:
     def test_xp_detail(self, mock_handler_input, set_lambda_globals, challenge_data):
         """XP detail query returns experience points."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="XP")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="XP",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -900,15 +1282,23 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "500 experience points" in spoken
 
-    def test_distance_imperial(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_distance_imperial(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Distance query for en-US returns miles."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="distance",
-                                locale="en-US")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="distance",
+            locale="en-US",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -917,15 +1307,23 @@ class TestWeeklyChallengeIntentHandler:
         assert "14.0 miles" in spoken
         assert "Legends and Lava" in spoken
 
-    def test_distance_metric(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_distance_metric(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Distance query for en-GB returns kilometers."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="distance",
-                                locale="en-GB")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="distance",
+            locale="en-GB",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -933,15 +1331,23 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "22.5 kilometers" in spoken
 
-    def test_elevation_imperial(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_elevation_imperial(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Elevation query for en-US returns feet."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="elevation",
-                                locale="en-US")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="elevation",
+            locale="en-US",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -949,15 +1355,23 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "1,148 feet" in spoken
 
-    def test_elevation_metric(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_elevation_metric(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Elevation query for en-AU returns meters."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="elevation",
-                                locale="en-AU")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="elevation",
+            locale="en-AU",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -969,11 +1383,17 @@ class TestWeeklyChallengeIntentHandler:
         """Next week timeframe returns the challenge 7 days from now."""
         cd = copy.deepcopy(challenge_data)
         # Day 3 is in the week starting day 1. 7 days later = day 10, in week starting day 8.
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_timeframe="next week")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_timeframe="next week",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -985,11 +1405,17 @@ class TestWeeklyChallengeIntentHandler:
     def test_this_month(self, mock_handler_input, set_lambda_globals, challenge_data):
         """This month timeframe lists remaining challenges."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=10, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_timeframe="this month")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_timeframe="this month",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1002,11 +1428,17 @@ class TestWeeklyChallengeIntentHandler:
     def test_next_month(self, mock_handler_input, set_lambda_globals, challenge_data):
         """Next month timeframe returns March data."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=10, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_timeframe="next month")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_timeframe="next month",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1014,14 +1446,22 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "March Route" in spoken
 
-    def test_next_month_unavailable(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_next_month_unavailable(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Next month returns error when data not available."""
         cd = {"2026-02": copy.deepcopy(challenge_data["2026-02"])}  # No March data
-        set_lambda_globals(day=10, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_timeframe="next month")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_timeframe="next month",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1033,8 +1473,9 @@ class TestWeeklyChallengeIntentHandler:
         """When challengeData is None, returns friendly error."""
         set_lambda_globals(day=5, lastDayOfMonth=28)
         lambda_function.challengeData = None
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week")
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1042,14 +1483,21 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "temporarily unavailable" in spoken
 
-    def test_missing_distance_on_overview(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_missing_distance_on_overview(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Overview with missing distance only shows name+XP, no gap mention."""
         cd = copy.deepcopy(challenge_data)
         # Day 15 entry has no distance/elevation
-        set_lambda_globals(day=15, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 15, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week")
+        set_lambda_globals(
+            day=15,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 15, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1060,14 +1508,22 @@ class TestWeeklyChallengeIntentHandler:
         assert "don't" not in spoken.lower()
         assert "distance" not in spoken.lower()
 
-    def test_missing_distance_when_asked(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_missing_distance_when_asked(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Distance query with missing data says 'I don't have the distance'."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=15, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 15, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="distance")
+        set_lambda_globals(
+            day=15,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 15, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="distance",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1075,14 +1531,22 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "don't have the distance" in spoken.lower()
 
-    def test_missing_elevation_when_asked(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_missing_elevation_when_asked(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Elevation query with missing data says 'I don't have the elevation'."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=15, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 15, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="climb of the week",
-                                challenge_detail="elevation")
+        set_lambda_globals(
+            day=15,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 15, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="climb of the week",
+            challenge_detail="elevation",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1090,14 +1554,21 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "don't have the elevation" in spoken.lower()
 
-    def test_ssml_phonetic_name(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_ssml_phonetic_name(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Accented route name triggers SSML phoneme output."""
         cd = copy.deepcopy(challenge_data)
         # Day 8 has "Côte de Pike" with name_ssml
-        set_lambda_globals(day=10, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 10, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="climb of the week")
+        set_lambda_globals(
+            day=10,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 10, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="climb of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1107,11 +1578,17 @@ class TestWeeklyChallengeIntentHandler:
         assert "<phoneme" in spoken
         assert "Côte de Pike" in spoken
 
-    def test_no_type_slot_returns_both(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_no_type_slot_returns_both(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """When no challenge type slot is provided, both route and climb are returned."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
         hi = mock_handler_input(intent_name="WeeklyChallengeIntent")
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
@@ -1121,28 +1598,43 @@ class TestWeeklyChallengeIntentHandler:
         assert "Legends and Lava" in spoken
         assert "Hardknott Pass" in spoken
 
-    def test_multi_turn_ask(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_multi_turn_ask(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Handler uses .ask() for multi-turn session."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
 
         hi.response_builder.ask.assert_called_with(" ")
 
-    def test_en_ca_uses_metric(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_en_ca_uses_metric(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """en-CA locale uses metric units."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_detail="distance",
-                                locale="en-CA")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_detail="distance",
+            locale="en-CA",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1150,14 +1642,22 @@ class TestWeeklyChallengeIntentHandler:
         spoken = hi.response_builder.speak.call_args[0][0]
         assert "kilometers" in spoken
 
-    def test_this_month_from_week_1(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_this_month_from_week_1(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """This month from day 1 shows all weeks."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=1, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 1, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                challenge_timeframe="this month")
+        set_lambda_globals(
+            day=1,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 1, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            challenge_timeframe="this month",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
@@ -1166,13 +1666,20 @@ class TestWeeklyChallengeIntentHandler:
         # Should include all 4 weeks
         assert "Legends and Lava" in spoken
 
-    def test_slot_resolution_fallback_to_raw_value(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_slot_resolution_fallback_to_raw_value(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """When resolution authority is None, _resolve_slot falls back to raw slot.value."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent", challenge_type="route of the week"
+        )
         # Override the challengeType slot: resolutions=None, raw value set
         slot = MagicMock()
         slot.resolutions = None
@@ -1186,14 +1693,22 @@ class TestWeeklyChallengeIntentHandler:
         assert "Legends and Lava" in spoken
         assert "500 XP" in spoken
 
-    def test_overview_includes_distance_and_elevation(self, mock_handler_input, set_lambda_globals, challenge_data):
+    def test_overview_includes_distance_and_elevation(
+        self, mock_handler_input, set_lambda_globals, challenge_data
+    ):
         """Overview includes distance and elevation when available."""
         cd = copy.deepcopy(challenge_data)
-        set_lambda_globals(day=3, lastDayOfMonth=28, challengeData=cd,
-                           nowInEastern=datetime(2026, 2, 3, 12, 0, 0))
-        hi = mock_handler_input(intent_name="WeeklyChallengeIntent",
-                                challenge_type="route of the week",
-                                locale="en-US")
+        set_lambda_globals(
+            day=3,
+            lastDayOfMonth=28,
+            challengeData=cd,
+            nowInEastern=datetime(2026, 2, 3, 12, 0, 0),
+        )
+        hi = mock_handler_input(
+            intent_name="WeeklyChallengeIntent",
+            challenge_type="route of the week",
+            locale="en-US",
+        )
         handler = lambda_function.WeeklyChallengeIntentHandler()
 
         handler.handle(hi)
