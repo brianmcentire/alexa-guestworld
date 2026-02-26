@@ -15,7 +15,7 @@ This skill is invoked with "Alexa, ask Which World..."
   * "What map is available on the 17th?"
   * "What is the route of the week?"
   * "What is the climb of the week next week?"
-  * "How much XP is the route of the week worth?"
+  * "How many XP is the route of the week worth?"
   * "When does the world change next?"
 
 Users from all over the world, including every continent except Antarctica, have used it and I hope you enjoy it too! (If you use it from Antarctica, please let me know ;-)
