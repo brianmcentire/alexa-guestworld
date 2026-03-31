@@ -11,7 +11,7 @@ import pytest
 # Add scrapers to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "scrapers"))
 
-from challenge_scraper_handler import lambda_handler
+from challenge_scraper_handler import lambda_handler, _is_regression_against_existing
 
 
 def _build_challenge_html(day_entries):
@@ -677,3 +677,56 @@ class TestChallengeLambdaRegressionGuard:
             "WeeklyChallenges202602.json",
         }
         assert len(mock_s3.put_object.call_args_list) == 0
+
+
+class TestRegressionDetection:
+    def test_normal_month_rollover_is_not_a_regression(self):
+        """Feb+Mar existing, Mar+Apr new — Feb rolling off is expected."""
+        existing = {
+            "2026-02": {"1": {"route": {"name": "A"}}, "8": {"route": {"name": "B"}}},
+            "2026-03": {"1": {"route": {"name": "C"}}},
+        }
+        new = {
+            "2026-03": {"1": {"route": {"name": "C"}}},
+            "2026-04": {"1": {"route": {"name": "D"}}},
+        }
+        is_reg, months = _is_regression_against_existing(existing, new)
+        assert is_reg is False
+        assert months == []
+
+    def test_dropping_future_month_is_a_regression(self):
+        """Existing has next month, new doesn't — that's a loss."""
+        existing = {
+            "2026-02": {"1": {"route": {"name": "A"}}},
+            "2026-03": {"1": {"route": {"name": "B"}}},
+        }
+        new = {
+            "2026-02": {"1": {"route": {"name": "A"}}},
+        }
+        is_reg, months = _is_regression_against_existing(existing, new)
+        assert is_reg is True
+        assert months == ["2026-03"]
+
+    def test_fewer_days_in_shared_month_is_a_regression(self):
+        """Same months but new has fewer days in one."""
+        existing = {
+            "2026-03": {"1": {"route": {"name": "A"}}, "8": {"route": {"name": "B"}}},
+        }
+        new = {
+            "2026-03": {"1": {"route": {"name": "A"}}},
+        }
+        is_reg, months = _is_regression_against_existing(existing, new)
+        assert is_reg is True
+        assert months == ["2026-03"]
+
+    def test_more_days_in_shared_month_is_not_a_regression(self):
+        """New data has more days — that's progress, not regression."""
+        existing = {
+            "2026-03": {"1": {"route": {"name": "A"}}},
+        }
+        new = {
+            "2026-03": {"1": {"route": {"name": "A"}}, "8": {"route": {"name": "B"}}},
+        }
+        is_reg, months = _is_regression_against_existing(existing, new)
+        assert is_reg is False
+        assert months == []

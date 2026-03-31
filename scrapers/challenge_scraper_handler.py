@@ -130,11 +130,33 @@ def _extract_month_keys(payload):
 
 
 def _is_regression_against_existing(existing_payload, new_payload):
-    """True when new payload has fewer month keys than existing payload."""
+    """True when new payload would lose recent months or day coverage.
+
+    Old months that precede the new payload's earliest month are allowed to
+    roll off — that is normal forward progress.  But dropping a month that
+    is at or after the new payload's earliest month (e.g. a next-month
+    entry the existing file already had) is a regression.  Likewise, fewer
+    days within any shared month is a regression.
+    """
     existing_months = set(_extract_month_keys(existing_payload))
     new_months = set(_extract_month_keys(new_payload))
-    missing_months = sorted(existing_months - new_months)
-    return (len(missing_months) > 0), missing_months
+    if not new_months:
+        return (len(existing_months) > 0), sorted(existing_months)
+
+    earliest_new = min(new_months)
+    regressed = []
+
+    # Check for existing months at/after the new range that would be lost
+    for month in sorted(existing_months - new_months):
+        if month >= earliest_new:
+            regressed.append(month)
+
+    # Check for fewer days within shared months
+    for month in sorted(existing_months & new_months):
+        if len(new_payload[month]) < len(existing_payload[month]):
+            regressed.append(month)
+
+    return (len(regressed) > 0), sorted(regressed)
 
 
 def _safe_write_challenge_json(s3_client, key, json_content, challenge_json):
